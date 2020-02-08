@@ -1,0 +1,130 @@
+<preCompilationAnalysis file="/Users/fabrice/XMOS/lib_XCserial/src/XCSerial.xc">
+<fDef name="XCSerial" global="true" noreturn="true" doNotSpecialize="false" numParams="9"/>
+<fDef name="XCSerial_available" global="true" noreturn="false" doNotSpecialize="false" numParams="1"/>
+<fDef name="XCSerial_flush" global="true" noreturn="false" doNotSpecialize="false" numParams="1"/>
+<fDef name="XCSerial_peek" global="true" noreturn="false" doNotSpecialize="false" numParams="1"/>
+<fDef name="XCSerial_read" global="true" noreturn="false" doNotSpecialize="false" numParams="1"/>
+<fDef name="XCSerial_setBaud" global="true" noreturn="false" doNotSpecialize="false" numParams="2"/>
+<fDef name="XCSerial_write" global="true" noreturn="false" doNotSpecialize="false" numParams="2"/>
+<fDef name="delay_microseconds" global="true" noreturn="false" doNotSpecialize="true" numParams="1"/>
+<fDef name="delay_milliseconds" global="true" noreturn="false" doNotSpecialize="true" numParams="1"/>
+<fDef name="delay_seconds" global="true" noreturn="false" doNotSpecialize="true" numParams="1"/>
+<fDef name="unused_write" global="true" noreturn="false" doNotSpecialize="false" numParams="3"/>
+<fCall name="delay_ticks_longlong" global="true" numArgs="1">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="delay_ticks_longlong" global="true" numArgs="1">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="delay_ticks_longlong" global="true" numArgs="1">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="__builtin_timer_after" global="true" numArgs="2">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="__builtin_peek" global="true" numArgs="1">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="__builtin_peek" global="true" numArgs="1">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="__builtin_pins_ne" global="true" numArgs="2">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="__builtin_long_mul" global="true" numArgs="4">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="intval"><intval isSigned="true" val="42949673"/></value>
+    </values>
+  </arg>
+  <arg num="2">
+    <values>
+      <value type="intval"><intval isSigned="true" val="0"/></value>
+    </values>
+  </arg>
+  <arg num="3">
+    <values>
+      <value type="intval"><intval isSigned="true" val="0"/></value>
+    </values>
+  </arg>
+</fCall>
+<fCall name="__builtin_peek" global="true" numArgs="1">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="__builtin_peek" global="true" numArgs="1">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="readChar" global="true" interface="XCSerial_if" numArgs="0">
+</fCall>
+<fCall name="peekChar" global="true" interface="XCSerial_if" numArgs="0">
+</fCall>
+<fCall name="writeChar" global="true" interface="XCSerial_if" numArgs="1">
+  <arg num="0">
+    <passThroughArg param="1" caller="XCSerial_write" global="true"/>
+    <values>
+    </values>
+  </arg>
+</fCall>
+<fCall name="numCharIn" global="true" interface="XCSerial_if" numArgs="0">
+</fCall>
+<fCall name="flushIn" global="true" interface="XCSerial_if" numArgs="0">
+</fCall>
+<fCall name="setBaud" global="true" interface="XCSerial_if" numArgs="1">
+  <arg num="0">
+    <passThroughArg param="1" caller="XCSerial_setBaud" global="true"/>
+    <values>
+    </values>
+  </arg>
+</fCall>
+</preCompilationAnalysis>
