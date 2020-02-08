@@ -175,15 +175,6 @@
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include/xc&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include/clang&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/lib_XCport/app}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_base/src/core}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/test_dsp_sim}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/test_dsp_sim/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_oktodac}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_oktodac/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_oktodac/src/FIRMWARE}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_oktodac/src/IOLIB}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_oktodac/src/extensions}&quot;"/>
 								</option>
 								<inputType id="com.xmos.cdt.xc.compiler.input.1240379883" name="XC" superClass="com.xmos.cdt.xc.compiler.input"/>
 							</tool>
@@ -487,15 +478,6 @@
 								<option id="com.xmos.c.compiler.option.include.paths.1678877183" name="com.xmos.c.compiler.option.include.paths" superClass="com.xmos.c.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include/clang&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/lib_XCport/app}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_base/src/core}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/test_dsp_sim}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/test_dsp_sim/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_oktodac}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_oktodac/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_oktodac/src/FIRMWARE}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_oktodac/src/IOLIB}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_oktodac/src/extensions}&quot;"/>
 								</option>
 								<inputType id="com.xmos.cdt.c.compiler.input.c.409540275" name="C" superClass="com.xmos.cdt.c.compiler.input.c"/>
 							</tool>
@@ -804,15 +786,6 @@
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include/clang&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include/c++/v1&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/lib_XCport/app}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_base/src/core}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/test_dsp_sim}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/test_dsp_sim/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_oktodac}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_oktodac/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_oktodac/src/FIRMWARE}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_oktodac/src/IOLIB}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_oktodac/src/extensions}&quot;"/>
 								</option>
 								<inputType id="com.xmos.cdt.cxx.compiler.input.cpp.1138775538" name="C++" superClass="com.xmos.cdt.cxx.compiler.input.cpp"/>
 							</tool>

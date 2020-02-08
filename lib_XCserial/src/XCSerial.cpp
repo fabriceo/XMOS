@@ -9,7 +9,7 @@
 
 
 
-#include "XCSerial.h"
+#include "XCSerial.h"   //header file
 /*
  * this is a wrapper for creating an object class typically compatible with the original Arduino library.
  */
