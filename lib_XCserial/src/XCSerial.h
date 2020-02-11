@@ -1,6 +1,22 @@
 #ifndef XCSERIAL_H
 #define XCSERIAL_H
 
+    enum SMstates {
+        SM_STOP = 0,
+        SM_WAITING_START,
+        SM_SENDING_SOH,
+        SM_SENDING_BLOCK,
+        SM_WAITING_ACK,
+        SM_FAILED,
+        SM_COMPLETED,
+
+        SM_SENDING,
+        SM_WAITING,
+        SM_RECEIVING,
+        SM_RECEIVED,
+        SM_TIMEOUT,
+    };
+
 #ifdef __XC__
 interface XCSerial_if {
     int numCharIn(); // number of charaters in the RX buffer
@@ -11,10 +27,18 @@ interface XCSerial_if {
     void writeChar(unsigned char ch);
     void flushIn(); // reset the RX buffer
     void setBaud(int baudrate); // change the uart bit rate
-    int gpioRX(); // read all bits on the RX input port (relevant if 4 or 8 bits)
+    int  gpioRX(); // read all bits on the RX input port (relevant if 4 or 8 bits)
     void gpioTX(int bit, int value); // set a bit on the TX port (if 4 or 8 bits)
+
     void setMaskIR(int mask);
     int numFrameIR();
+
+    void xmodemSend(unsigned char * alias buf, const int size, const int timeoutMax );
+    void xmodemStop();
+    int  xmodemStatus();
+
+    void answerStart(int timeout, int max, int end);
+    int  answerStatus();
 } ;
 
 #define XCSERIAL_IF(x) interface XCSerial_if x

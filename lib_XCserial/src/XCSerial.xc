@@ -12,6 +12,9 @@
 #include "stdio.h"
 #include "XCSerial.h"
 
+
+
+
 enum uartfast_state {
   RX_NONE,
   RX_AWAITING,
@@ -91,19 +94,36 @@ void XCSerial(port ?pRX, port ?pTX,
     int timeIRprev;
 #define timeIRmax 500000 // 5 milisecond
     int frameIR = 0;
+
+    // XMODEM definitions
+    #define XM_BLK_SIZE    128
+    #define XM_MAX_RETRIES 5
+    #define SOH         0x01
+    #define EOT         0x04
+    #define ACK         0x06
+    #define NAK         0x15
+    #define CAN         0x18
+    #define START       'C'
+
+    enum SMstates SMstate = SM_STOP;
+
+    int SMtimeoutMax = 0;
+    int SMtimeout;
+    int SMblockNum;
+    int SMretries;
+    int SMindex;
+    int SMcrc16;
+    int SMblockSize;
+    int SMansMax;
+    int SMansEnd;
+    unsigned char * alias SMbufPtr;
+
     while (1) {
 
         select{
 
             case timeRXTX when timerafter(nextT) :> void: // event here every uart bit time
 
-                if (stateIR == IR_RECEIVING) {
-
-                    int temp = nextT - timeIRprev;
-                    if (temp > timeIRmax) {
-                        frameIR ++;
-                        stateIR = IR_AWAITING; }
-                }
 
                 if (nextInt == RX_RECEIVING){
 
@@ -123,6 +143,7 @@ void XCSerial(port ?pRX, port ?pTX,
                         if (newIn != foutRX) {
                              bufRX[finRX] = dataRX;
                              finRX = newIn; }
+
                          stateRX = RX_AWAITING;
                          if (stateTX == TX_DELAYING) {// we where delaying transmission due to halfduplex
                              stateTX = TX_AWAITING;
@@ -205,10 +226,127 @@ void XCSerial(port ?pRX, port ?pTX,
                 } // if nextInt = RX_RECEIVING
 
 
+                if (stateIR == IR_RECEIVING) {
+
+                    int temp = nextT - timeIRprev;
+                    if (temp > timeIRmax) {
+                        frameIR ++;
+                        stateIR = IR_AWAITING; }
+                }
+
+                // xmodem
+                switch (SMstate) {
+
+                case SM_WAITING_START:{
+                    if ((nextT - SMtimeout) > SMtimeoutMax)  SMstate = SM_FAILED;
+                    else
+                    if (finRX != foutRX){   // char received
+                        if (bufRX[foutRX] == START) {
+                            SMretries = XM_MAX_RETRIES;
+                            SMblockNum = 0;
+                            SMblockSize -= XM_BLK_SIZE;
+                            SMcrc16 = 0; //? or poly
+                            SMstate = SM_SENDING_SOH;
+                        } else
+                            if (bufRX[foutRX] == NAK)
+                                SMstate = SM_FAILED;
+                            else {
+                                foutRX++;
+                                if (foutRX >= sizeRX) foutRX = 0; }
+                    }
+                } break;
+
+                case SM_SENDING_SOH : {
+                    if (SMretries--) {
+                        bufTX[0] = SOH;
+                        bufTX[1] = SMblockNum;
+                        bufTX[2] = ~SMblockNum;
+                        finTX  = 3;
+                        foutTX = 0;
+                        SMindex = 0;
+                        SMstate = SM_SENDING_BLOCK;
+                    } else
+                        SMstate = SM_FAILED;
+                } break;
+
+                case SM_SENDING_BLOCK:{
+                    if ( foutTX == 3 ) {    // header sent
+                        if (SMindex < XM_BLK_SIZE) {
+                            int pos = SMblockNum*XM_BLK_SIZE + SMindex++;
+                            unsigned char ch;
+                            asm("ld8u %0, %1[%2]":"=r"(ch):"r"(SMbufPtr),"r"(pos));
+                            bufTX[2] = ch;
+                            foutTX = 2;
+                            //addcrc
+                        } else {
+                            bufTX[4] = SMcrc16 & 0xFF;
+                            bufTX[5] = SMcrc16 >>8;
+                            foutTX = 4;
+                            finTX = 6;
+                        }
+                    } else
+                        if ( foutTX == 6 ) {    // crc sent
+                            SMtimeout = nextT;
+                            SMstate = SM_WAITING_ACK;
+                        }
+                } break;
+
+                case SM_WAITING_ACK:{
+                    if ((nextT - SMtimeout) > SMtimeoutMax)
+                         SMstate = SM_SENDING_SOH;
+                    else
+                    if (finRX != foutRX){
+                        if (bufRX[foutRX] == ACK) {
+                            if (SMblockSize > 0){
+                                SMblockSize -= XM_BLK_SIZE;
+                                SMblockNum++;
+                                SMretries = XM_MAX_RETRIES;
+                                SMstate = SM_SENDING_SOH;
+                            } else
+                                if (finTX == 6) {
+                                    bufTX[6] = EOT;
+                                    finTX = 7;
+                                    SMretries = 0;
+                                    SMtimeout = nextT;
+                                } else
+                                    SMstate = SM_COMPLETED;
+                        } else
+                            if (bufRX[foutRX] == NAK)
+                                SMstate = SM_SENDING_SOH;
+                            else {
+                                foutRX++;
+                                if (foutRX >= sizeRX) foutRX = 0; }
+                    }
+                } break;
+
+                // sending receiving commands
+                case SM_SENDING: {
+                    if (finTX == foutTX) {
+                        finRX = 0; foutRX = 0;
+                        SMtimeout = nextT;
+                        SMstate = SM_WAITING;
+                    }
+                } break;
+
+                case SM_WAITING: {
+                    if (finRX != foutRX) SMstate = SM_RECEIVING;
+                    if ((nextT - SMtimeout) > SMtimeoutMax)
+                         SMstate = SM_TIMEOUT;
+                } break;
+
+                case SM_RECEIVING: {
+                    if (finRX >= SMansMax) SMstate = SM_RECEIVED;
+                    if (finRX)
+                        if (SMansEnd>=0)
+                            if (bufRX[finRX] == SMansEnd) SMstate = SM_RECEIVED;
+                    if ((nextT - SMtimeout) > SMtimeoutMax) SMstate = SM_TIMEOUT;
+                } break;
+                }
+
                 break; // case timerRXTX
 
             /** detect changes on pRX and store pRX in p **/
-            case pRX when pinsneq(oldRX) :> int p :
+            case pRX when pinsneq(oldRX) :> int p : {
 
                 int change = (p ^ oldRX); oldRX = p;
 
@@ -262,7 +400,38 @@ void XCSerial(port ?pRX, port ?pTX,
 
                     } // RX changes
 
-                 break;
+            } break;
+
+
+            case (!isnull(uif)) => uif.xmodemSend(unsigned char * alias buf, const int size, const int timeoutMax ): {
+                SMbufPtr = buf;
+                SMtimeoutMax = timeoutMax;
+                SMblockSize = size;
+                SMtimeout = nextT;
+                finRX = 0; foutRX = 0;
+                SMstate = SM_WAITING_START;    // wait for start
+            } break;
+
+            case (!isnull(uif)) => uif.xmodemStatus() -> int res: {
+                res = SMstate;
+            } break;
+
+            case (!isnull(uif)) => uif.xmodemStop() : {
+                SMstate = SM_STOP;
+                finTX = 0; foutTX = 0; finRX = 0; foutRX = 0;
+            } break;
+
+            case (!isnull(uif)) => uif.answerStart(int timeout, int max, int end) : {
+                SMtimeoutMax = timeout;
+                SMansMax = max;
+                SMansEnd = end;
+                SMstate = SM_SENDING;
+            } break;
+
+            case (!isnull(uif)) => uif.answerStatus() -> int res : {
+                res = SMstate;
+            } break;
+
 
             /** interface handling **/
             case (!isnull(uif)) => uif.gpioRX() -> int res:
@@ -295,6 +464,7 @@ void XCSerial(port ?pRX, port ?pTX,
 
 
             case (!isnull(uif)) => uif.writeChar(unsigned char ch):
+                if (SMstate) break;
                 unsigned newIn = finTX + 1;
                 if (newIn >= sizeTX) newIn = 0;
                 if (newIn == foutTX) break; // buf full, exit
@@ -303,6 +473,7 @@ void XCSerial(port ?pRX, port ?pTX,
                 break;
 
             case (!isnull(uif)) => uif.readChar() -> unsigned char ch:
+                if (SMstate) break;
                 if (finRX == foutRX) break; // nothing to read
                 ch = bufRX[foutRX];
                 foutRX++; if (foutRX >= sizeRX) foutRX = 0;
@@ -313,20 +484,27 @@ void XCSerial(port ?pRX, port ?pTX,
                 break;
 
             case (!isnull(uif)) => uif.numCharIn() -> int res:
+                if (SMstate) res = 0;
+                else
                 if (finRX >= foutRX) { res = finRX - foutRX;
                 } else { res = sizeRX-(foutRX-finRX)-1; }
                 break;
 
             case (!isnull(uif)) => uif.flushIn():
+                if (SMstate) break;
                 foutRX = finRX;
                 break;
 
             case (!isnull(uif)) => uif.numCharOut() -> int res:
+                if (SMstate) res = 0;
+                else
                  if (finTX >= foutTX) { res = finTX - foutTX;
                  } else { res = sizeTX-(foutTX-finTX)-1; }
                  break;
 
             case (!isnull(uif)) => uif.sizeLeftOut() -> int res:
+                if (SMstate) res = 0;
+                else
                  if (finTX >= foutTX) { res = sizeTX - (finTX - foutTX);
                  } else { res = (foutTX-finTX) - 1; }
 
