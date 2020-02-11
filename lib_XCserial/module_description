@@ -1,5 +1,12 @@
-Simple but efficient serial/uart interface
-flexible can use 1bit or nbits port
-includes additional function to combine 
-encoder and IR receiver functionalities
-quite simple but usefull difficult with git
+A simple Serial task including:
+- receive transmit true pin changes detection and bit timer
+- fifo handling on TX and RX
+- possibility to allocate 1bit or 4 bits ports
+- possibility to access gpio when 4 bits port used
+- possibility to work half-duplx with a single port
+- possibility to handle RTS for transmiting on RS485 network
+- includes primitives for Infra Red receiver handling
+- include XMODEM transmit protocol as a state machine
+- include capabilities to listen an asnswer with timeout
+
+original source code on github : https://github.com/fabriceo/XMOS
