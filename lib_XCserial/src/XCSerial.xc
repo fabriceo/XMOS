@@ -529,6 +529,9 @@ void XCSerial(port ?pRX, port ?pTX,
                 res = frameIR;
                 break;
 
+            case (!isnull(uif)) => uif.taskReady() -> int res:
+                res = 1;
+                break;
         }  // select
     }  // while 1
 }

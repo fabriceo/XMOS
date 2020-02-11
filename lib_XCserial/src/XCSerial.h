@@ -19,6 +19,8 @@
 
 #ifdef __XC__
 interface XCSerial_if {
+    int taskReady();
+
     int numCharIn(); // number of charaters in the RX buffer
     int numCharOut(); // number of charater in the TX buffer, still to be sent
     int sizeLeftOut(); // space left in the TX buffer
