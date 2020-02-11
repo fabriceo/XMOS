@@ -12,6 +12,8 @@
 .metadata/*
 *.o
 *.xe
+**/*.xe
+**/*/*.xe
 *.vcd
 *.xi
 *.i
