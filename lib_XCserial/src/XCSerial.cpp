@@ -7,8 +7,6 @@
  *      this provides a wrapper for using the XCSerial.xc from a cpp app
  */
 
-
-
 #include "XCSerial.h"   //header file
 /*
  * this is a wrapper for creating an object class typically compatible with the original Arduino library.

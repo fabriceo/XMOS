@@ -49,8 +49,7 @@ interface XCSerial_if {
 [[combinable]]
 void XCSerial(port ?pRX, port ?pTX,
               unsigned maskRX, unsigned maskTX,unsigned maskRTS,
-              unsigned bauds,
-              static const unsigned sizeRX, static const unsigned sizeTX
+              static const int sizeRX, static const int sizeTX
               ,server XCSERIAL_IF(?uif)
               );
 

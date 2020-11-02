@@ -23,10 +23,12 @@ static inline int getTime() {
 enum uartfast_state {
   RX_NONE,
   RX_AWAITING,
+  RX_DELAYING,
   RX_RECEIVING,
   RX_ONHOLD,
   TX_NONE,
   TX_AWAITING,
+  TX_DELAYING,
   TX_SENDING,
   TX_ONHOLD
 };
@@ -91,7 +93,7 @@ void XCSerial(port ?pRX, port ?pTX,
     int dt  = XS1_TIMER_HZ/10000; // 10us by default
 
     timer timeRXTX; // the single timer used to trigger all RX or TX I/O
-    int nextT; // used to control timing event
+    int tRX,tTX, nextT; // used to control timing event
 
     int bitNumRX = 0;
     int dataRX;
@@ -148,6 +150,7 @@ void XCSerial(port ?pRX, port ?pTX,
 
     timeRXTX :> nextT;
     nextT += dt; // initialize for next timer event in onebit of now
+    tTX = nextT;
 
     int told = getTime();
     int tnew = 0;
@@ -158,57 +161,70 @@ void XCSerial(port ?pRX, port ?pTX,
 
             case timeRXTX when timerafter(nextT) :> void: { // event here every uart bit time
 
-            if (stateIR == IR_RECEIVING) {  // first of the interrupt sequence because using nextT
+            if ( nextT == tRX ) {
+                if ( stateRX == RX_RECEIVING )  {
 
-                int temp = nextT - timeIRprev;
-                if (temp > timeIRmax) {
-                    frameIR ++;
-                    stateIR = IR_AWAITING; }
-            }
+                    tRX += dt;
+                    int p;
+                    pRX :> p;
+                    oldRX = p; // read and remember current port value
 
-            nextT += dt;    // by default always move on to the next bit time frame whatever the state machine is
-
-            //switch (state) {
-            //case RX_RECEIVING:
-
-            if ( stateRX == RX_RECEIVING )  {
-
-                int p;
-                pRX :> p;
-                oldRX = p; // read and remember current port value
-
-                if (bitNumRX < 9)
-                    if (p & maskRX)  dataRX |= (1<<bitNumRX);
-                bitNumRX++;
-                if (bitNumRX >= 9) { // stop bit received previously
-                    if ((dataRX & 0x100)) { // check proper stopbit
+                    if (bitNumRX < 9)
+                        if (p & maskRX) {
+                            dataRX |= (1<<bitNumRX);
+                            //printf("1");
+                        }
+                        //else printf("0");
+                    bitNumRX++;
+                    if (bitNumRX >= 9) { // stop bit received previously
                         //store in fifo
-                        int newIn = finRX + 1;
-                        if (newIn >= sizeRX) newIn = 0;
-                        if (newIn != foutRX) {
-                             bufRX[finRX] = dataRX;
-                             //printf("x%X",bufRX[finRX]);
-                             finRX = newIn; }
+                        if ((dataRX & 0x100)) { // check proper stopbit
+                            int newIn = finRX + 1;
+                            if (newIn >= sizeRX) newIn = 0;
+                            if (newIn != foutRX) {
+                                 bufRX[finRX] = dataRX;
+                                 //printf("x%X",bufRX[finRX]);
+                                 finRX = newIn; }
+                        }
+                        //printf(">");
+                        stateRX = RX_AWAITING;
+                        if (stateTX == TX_DELAYING) {// we where delaying transmission due to halfduplex
+                            stateTX = TX_AWAITING; }
+                        if (stateTX != TX_SENDING) tTX = tRX + dt>>1;   // no stress, realign next timer interrupt in 1.5 bit of now
+                        nextT = tTX;
+                    } else {
+                        if (stateTX == TX_SENDING)  // samebit rate so switching int to other
+                             nextT = tTX;
+                        else nextT = tRX;
                     }
-                    // reception complete
-                    stateRX = RX_AWAITING;
-                    if (stateTX != TX_NONE)  stateTX = TX_AWAITING;
+                } else {    // should never come here. place older for future
+                    if (stateTX != TX_SENDING) tTX = tRX + dt>>1;
+                    nextT = tTX; }
+            } // if nextT == tRX
+            else
+            {
+
+                if (stateIR == IR_RECEIVING) {  // first of the interrupt sequence because using nextT
+
+                    int temp = nextT - timeIRprev;
+                    if (temp > timeIRmax) {
+                        frameIR ++;
+                        stateIR = IR_AWAITING; }
                 }
 
-            } else
+                tTX = nextT + dt;
 
-            //case TX_AWAITING:
-            if (stateTX == TX_AWAITING) {
+                if (stateTX == TX_AWAITING) {
 
                 /** check if available data in fifo **/
-                if (finTX != foutTX) {
+                if (finTX != foutTX){
 
-                    stateTX = TX_SENDING;
-                    if (stateRX != RX_NONE) stateRX = RX_ONHOLD;    //force half dupex
+                    //printf("<%X>\n",bufTX[foutTX]); timeRXTX :> tTX; tTX += dt;
 
                     /** lets go for a start bit **/
                     if (samePortRXTX) {
-                        oldRX &= (~maskTX);
+                        stateRX = RX_DELAYING; //  we are halfduplex because TX RX using the same port
+                        oldRX &= (~maskTX) & (~maskRTS); // the TX bit will become 0
                         pRX  <: oldRX;
                     } else
                         if (port1bitTX)  pTX  <: 0 ;
@@ -219,42 +235,60 @@ void XCSerial(port ?pRX, port ?pTX,
                     /** get data from fifo buffer **/
                     dataTX = bufTX[foutTX];
                     bitNumTX = 0;
-                }
+                    stateTX = TX_SENDING;
+                } else
+                    if (stateRX == RX_DELAYING) { //  we are halfduplex (because TX RX using the same port)
+                        int val = peek(pRX);
+                        val |= maskRTS;
+                        pRX  <: val;
+                        oldRX = val;
+                        stateRX = RX_AWAITING; }
 
-            } else
-
+                if ((stateRX == RX_RECEIVING) )
+                     nextT = tRX;
+                else nextT = tTX;
+            }
+            else
             if (stateTX == TX_SENDING) {
 
                 int bit;
-                if (bitNumTX < 8)  bit = (dataTX & (1<< bitNumTX));
-                else bit = maskTX;  // stop bit
+                if (bitNumTX < 8) {
+                    bit = (dataTX & (1<< bitNumTX));
+                } else { bit = maskTX; } // stop bit
                 if (samePortRXTX) {
                     pRX :> oldRX;
                     if (bit) oldRX |= maskTX; else oldRX &= (~maskTX);
                     pRX <: oldRX ;
-                } else
+                } else {
                     if (port1bitTX) {
                         if (bit) pTX <: 1 ; else pTX <:0 ;
                     } else {
                         if (bit) oldTX |= maskTX; else oldTX &= (~maskTX);
-                        pTX <: oldTX ; }
+                        pTX <: oldTX ;
+                    }
+                }
                 //if (bit) printf("+"); else printf("-");
+
                 bitNumTX++;
                 if (bitNumTX > 8){  // end of transmit
-                    // move on in the fifo
                     int newOut = foutTX + 1;
                     if (newOut >= sizeTX) newOut = 0;
                     foutTX = newOut;
                     stateTX = TX_AWAITING;
-                    if (stateRX != RX_NONE) stateRX = RX_AWAITING;
                     //printf("]"); timeRXTX :> tTX; tTX+=dt;
                 }
-
+                if ( (stateRX == RX_RECEIVING) )//&& ((tTX - tRX)>0) )
+                     nextT = tRX;
+                else nextT = tTX;
             } // TX_SENDING
+            else
+                nextT = tTX;
+
+            } //nextT != tRX
 
 
             // xmodem
-            if ((stateRX == RX_AWAITING) && (stateTX == TX_AWAITING) ) {
+            if ((stateRX == RX_AWAITING) && (stateTX != TX_SENDING) ) {
             switch (SMstate) {
 
             case SM_WAITING_START:{
@@ -362,7 +396,7 @@ void XCSerial(port ?pRX, port ?pTX,
                 if ((nextT - SMtimeout) > SMtimeoutMax) SMstate = SM_TIMEOUT;
                 break; }
             }
-            } // end if xmodem
+            } // end if
 
             break; } // case timerRXTX
 
@@ -378,34 +412,50 @@ void XCSerial(port ?pRX, port ?pTX,
                 if ( change & maskRX ){
                     /** is this a 0 start bit **/
                     if ( ( p & maskRX ) == 0) {
-                        timeRXTX :> nextT; // our reference time starts now
-                        nextT += dt + (dt>>1); // futur half bit after start bit
+                        timeRXTX :> tRX; // our reference time starts now
+                        tRX += (dt>>1); // futur half bit
+                        if (stateTX == TX_SENDING) {   // then we have a tTX on going
+                            int eps = 100;//1us
+                            int delta = tTX- tRX;
+                            if (delta >= 0) {
+                                if (delta<eps) tRX = tTX-eps; }
+                            else
+                                if ((-delta)<eps) tRX = tTX+eps;
+                            tRX += dt; // skip start bit
+                            //nextT = tRX; ????? why did I put that here holy shit
+                        } else
+                            tRX += dt; // skip start bit
                         bitNumRX = 0; dataRX = 0;
                         stateRX = RX_RECEIVING;
-                        if (stateTX != TX_NONE) stateTX = TX_ONHOLD;
+                        //printf("<0");
+
+                        if (stateTX == TX_AWAITING) {
+                            if (samePortRXTX) stateTX = TX_DELAYING; // we are halfduplex due to same port
+                            else { tTX = tRX + (dt>>1); }  // next transmission to be checked in 2 bits of now
+                        }
                     } // startbit
-                }
+                } else
                 // treat other possible input changes here
 
-                if (change & maskIR) { // changes detected on the IR pin
-                    p &= maskIR; // new value of the IR
-                    int temp;
-                    timeRXTX :> temp;
-                    if (stateIR == IR_AWAITING) {
-                        if (p == 0){ // new MARK received ( = 0volt)
-                            stateIR = IR_RECEIVING; }
-                    }
-                    // compute time in microseconds by using 64 bit mul and keeping upper 32 bits only
-                    timeIRprev = temp;
-                    {temp, p} = lmul(temp, MUL_2P32_DIV_100, 0, 0);
-                    if (temp == 0) { temp = 1; } // rounding up because 0 is marking the end of a frame in our buffer
-                    bufIR[bufIRin] = temp;
+                    if (change & maskIR) { // changes detected on the IR pin
+                        p &= maskIR; // new value of the IR
+                        int temp;
+                        timeRXTX :> temp;
+                        if (stateIR == IR_AWAITING) {
+                            if (p == 0){ // new MARK received ( = 0volt)
+                                stateIR = IR_RECEIVING; }
+                        }
+                        // compute time in microseconds by using 64 bit mul and keeping upper 32 bits only
+                        timeIRprev = temp;
+                        {temp, p} = lmul(temp, MUL_2P32_DIV_100, 0, 0);
+                        if (temp == 0) { temp = 1; } // rounding up because 0 is marking the end of a frame in our buffer
+                        bufIR[bufIRin] = temp;
 
-                    temp = bufIRin +1;
-                    if (temp >= bufIRsize) temp = 0;
-                    if (temp != bufIRout) bufIRin = temp;
-                    bufIR[bufIRin] = 0; // End of Frame placeholder
-                } // IR change detected
+                        temp = bufIRin +1;
+                        if (temp >= bufIRsize) temp = 0;
+                        if (temp != bufIRout) bufIRin = temp;
+                        bufIR[bufIRin] = 0; // End of Frame placeholder
+                    } // IR change detected
                 break;}
 
 
@@ -575,15 +625,14 @@ void XCSerial(port ?pRX, port ?pTX,
             case (!isnull(uif)) => uif.taskReady() -> int res:{
                 res = 1;
                 break; }
-#if 0
-            default:{   // check if we come here at least every 20uS, to detect overload
+
+            default:{
                 tnew = getTime();
                 int delta = tnew - told;
-                if ((delta)>2000) {
+                if ((delta)>1000) {
                     printf("PROBLEM %d\n", delta); }
                 told = tnew;
             break; }
-#endif
         }  // select
     }  // while 1
 }
