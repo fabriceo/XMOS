@@ -58,7 +58,6 @@ typing xmosusb without option will scrutenize all usb device and print the list 
 to apply commands on a specific device, add its number as the first parameter of the command line,
 or the serial number, as a text string as it apears when the list of devices are shown.
 example:
-
 	xmosusb --testvidpid
 or
 	xmosusb 0 --testvidpid
