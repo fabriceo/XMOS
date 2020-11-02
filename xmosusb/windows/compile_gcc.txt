@@ -1,1 +1,0 @@
-gcc -o xmosusb ../src/xmosusb.cpp -I../src -I. -L. -lusb-1.0

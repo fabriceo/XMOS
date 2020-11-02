@@ -16,18 +16,23 @@
 #define DAC_CMD   1      // this will include commands related to status and dac modes
 #endif
 #ifndef BIN2HEX_CMD
-#define BIN2HEX_CMD   1      // this will include commands related to status and dac modes
+#define BIN2HEX_CMD   1 // this will include commands related to status and dac modes
 #endif
-#ifndef OKTO_MODE
+#ifndef OKTO_MODE       // specific handler for okto research (non public code)
 #define OKTO_MODE 1
 #endif
 
 #if defined(__APPLE__)
-//to be compiled with : make -f Makefile.OSX all
-#define SLEEP(n) system("sleep " #n) //osx
+#define SLEEP(n) system("sleep " #n)
 #elif defined(__linux__)
 #define SLEEP(n) system("sleep " #n)
 #else // aka windows :)
+// REQUIRES MinGW64.
+// installer available at :
+// https://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win32/Personal%20Builds/mingw-builds/installer/
+// select options : architecture x86_64  and   Threads win32
+// then just launch a run-terminal from the windows start menu and mingW project
+// and type mingw32-make
 #include "windows.h"
 #define SLEEP(n) Sleep(1000*n) //windows
 #endif
@@ -38,6 +43,7 @@
 
 #define XMOS_XCORE_AUDIO_AUDIO2_PID 0x3066
 #define XMOS_DXIO                   0x2009
+#define XMOS_OKTO_INITIAL           0x2009
 #define XMOS_L1_AUDIO2_PID          0x0002
 #define XMOS_L1_AUDIO1_PID          0x0003
 #define XMOS_L2_AUDIO2_PID          0x0004
@@ -46,13 +52,12 @@
 
 unsigned short pidList[] = {XMOS_XCORE_AUDIO_AUDIO2_PID, 
 						    XMOS_DXIO,
+						    XMOS_OKTO_INITIAL,
                             XMOS_L1_AUDIO2_PID,
                             XMOS_L1_AUDIO1_PID,
                             XMOS_L2_AUDIO2_PID,
                             XMOS_SU1_AUDIO2_PID, 
                             XMOS_U8_MFA_AUDIO2_PID };
-
-
 
 #define DFU_REQUEST_TO_DEV      0x21
 #define DFU_REQUEST_FROM_DEV    0xA1
@@ -60,16 +65,15 @@ unsigned short pidList[] = {XMOS_XCORE_AUDIO_AUDIO2_PID,
 #define VENDOR_REQUEST_TO_DEV    (LIBUSB_ENDPOINT_OUT | LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_RECIPIENT_DEVICE)
 #define VENDOR_REQUEST_FROM_DEV  (LIBUSB_ENDPOINT_IN  | LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_RECIPIENT_DEVICE)
 
-// Standard DFU requests (not used as the DFU mode is now bridged to the Audio Control  commands)
+// Standard DFU requests (not really used as the DFU mode is now bridged to the Audio Control commands)
 
-#define DFU_DETACH 0
-#define DFU_DNLOAD 1
-#define DFU_UPLOAD 2
-#define DFU_GETSTATUS 3
-#define DFU_CLRSTATUS 4
-#define DFU_GETSTATE 5
-#define DFU_ABORT 6
-
+#define DFU_DETACH      0
+#define DFU_DNLOAD      1
+#define DFU_UPLOAD      2
+#define DFU_GETSTATUS   3
+#define DFU_CLRSTATUS   4
+#define DFU_GETSTATE    5
+#define DFU_ABORT       6
 
 #define XMOS_DFU_RESETDEVICE   0xf0 //final command after downloading new image to imediately reboot
 #define XMOS_DFU_REVERTFACTORY 0xf1 //not used
@@ -81,14 +85,15 @@ unsigned short pidList[] = {XMOS_XCORE_AUDIO_AUDIO2_PID,
 #define XMOS_DFU_DNLOAD        0xf7 //same as original DFU_DNLOAD
 #define XMOS_DFU_GETSTATUS     0xf8 //same as original DFU_GETSTATUS
 
+
 static libusb_device_handle *devh = NULL;   // current usb device found and opened
-unsigned XMOS_DFU_IF = 0;
 
+unsigned XMOS_DFU_IF  = 0;                  // interface number used by the DFU driver, valid once device is opened
+unsigned int deviceID = 0;                  // device number selected by the user in the command line (usefull when many xmos device found)
+char * deviceSerial;                        // serial number found in the command line typed by the user
 
-unsigned int deviceID = 0;
-unsigned int param1   = 0;
-unsigned char data[64];
-unsigned int deviceSerial = 0;
+// helpers
+unsigned char data[64];                     // global var used to exchange data between host-client
 
 static inline void storeInt(int idx,int val){
     data[idx] = val ;
@@ -116,14 +121,16 @@ static inline int loadShort(int idx){
     return val;
 }
 
+static char str64[64] = "";
 static char Manufacturer[64] = "";
 static char Product[64] = "";
 static char SerialNumber[16] = "";
 unsigned BCDdevice = 0;
 
-static int find_xmos_device(unsigned int id, unsigned int list) // list !=0 means printing device information
+static int find_usb_device(unsigned int id, unsigned int list, unsigned int printmode) // list !=0 means printing device information
 {
     libusb_device *dev;
+    libusb_device *founddev;
     libusb_device **devs;
     int currentId = 0;
     char string[256];
@@ -132,6 +139,7 @@ static int find_xmos_device(unsigned int id, unsigned int list) // list !=0 mean
 
     libusb_get_device_list(NULL, &devs);
     devh = NULL;
+    founddev = NULL;
     int i = 0;
     while ((dev = devs[i++]) != NULL) 
     {
@@ -140,10 +148,11 @@ static int find_xmos_device(unsigned int id, unsigned int list) // list !=0 mean
 
         int foundDev = 0;
 
-        if (deviceSerial == 0) {
+        if (deviceSerial == NULL) {
             if(desc.idVendor == XMOS_VID) {
                 for(int j = 0; j < sizeof(pidList)/sizeof(pidList[0]); j++) {
                     if(desc.idProduct == pidList[j] /* && !list */) {
+                        BCDdevice = desc.bcdDevice;
                         foundDev = 1;
                         //printf("device identified\n");
                         break; // for loop
@@ -151,122 +160,123 @@ static int find_xmos_device(unsigned int id, unsigned int list) // list !=0 mean
                 }
             } // id = xmos_vid
         } else {
+            // check if current device correspond to given serial number
             if ((result = libusb_open(dev, &devh)) >= 0)  {
                 libusb_config_descriptor *config_desc = NULL;
                 libusb_get_active_config_descriptor(dev, &config_desc);
                 if (config_desc != NULL) {
                     if (desc.iSerialNumber) {
-                        int ret = libusb_get_string_descriptor_ascii(devh, desc.iSerialNumber, (unsigned char*)SerialNumber, sizeof(SerialNumber));
-                        if (ret > 0) {
-                            int serial = atoi(SerialNumber);
-                            if (serial == 0) serial=1;
-                            if ((serial == deviceSerial) && (SerialNumber[7] == 0)) {
-                                //printf("SERIAL %s <-\n",SerialNumber);
-                                BCDdevice = desc.bcdDevice;
-                                if (desc.iManufacturer)
-                                    int ret = libusb_get_string_descriptor_ascii(devh, desc.iManufacturer, (unsigned char*)Manufacturer, sizeof(Manufacturer));
-                                if (desc.iProduct)
-                                    int ret = libusb_get_string_descriptor_ascii(devh, desc.iProduct, (unsigned char*)Product, sizeof(Product));
-                                for (int j = 0; j < config_desc->bNumInterfaces; j++) {
-                                    const libusb_interface_descriptor *inter_desc = ((libusb_interface *)&config_desc->interface[j])->altsetting;
-                                    if (inter_desc->bInterfaceClass == 0xFE && inter_desc->bInterfaceSubClass == 0x1) {
-                                        XMOS_DFU_IF = j;// DFU class
-                                        //libusb_detach_kernel_driver(devh, XMOS_DFU_IF);
-                                        foundDev = 1; break;
-                                    }
-                                }
-                                if (foundDev == 1) break;
+                        result = libusb_get_string_descriptor_ascii(devh, desc.iSerialNumber, (unsigned char*)str64, sizeof(str64));
+                        if (result > 0) {
+                            result = strcmp( str64, deviceSerial );
+                            if ( result == 0 ) {
+                                id = currentId; // force the id to be used, as the user gave a firm serial number
+                                foundDev = 1;
                             }
                         }
                     }
-                }
-                libusb_free_config_descriptor(config_desc);
-                libusb_close(devh);
+                    libusb_free_config_descriptor(config_desc);
+                } // config_desc
+                //libusb_close(devh);
             }
         }
 
-        if ((list || foundDev)) {
-            if (foundDev) printf("\n[%d] > ",currentId);
-            else printf("\n      ");
-            printf("VID = 0x%04x, PID = 0x%04x, BCDDevice: 0x%04x\r", desc.idVendor, desc.idProduct, desc.bcdDevice);
-            BCDdevice = desc.bcdDevice;
-        }
+        if ((list || foundDev)) {   // "list" flag will force displaying all devices, not only the one found
 
-        if (foundDev) {
-            if (currentId == id)  {
-                if ((result=libusb_open(dev, &devh)) < 0)  {
-                    printf("\n     USB problem in acessing this device (error %d)\n",result);
+            if (printmode) {
+                if (foundDev) printf("\n[%d] > ",currentId);
+                else printf("\n      ");
+                printf("VID %04X, PID %04X, BCD %04X", desc.idVendor, desc.idProduct, desc.bcdDevice); }
+
+            if ((result = libusb_open(dev, &devh)) < 0)  {
+                if (printmode) printf(" ** ERROR %d **\n",result);
+                libusb_free_device_list(devs, 1);
+                return -1; }
+
+            libusb_config_descriptor *config_desc = NULL;
+            libusb_get_active_config_descriptor(dev, &config_desc);
+            if (config_desc != NULL)  {
+
+                if (desc.iManufacturer) {
+                    result = libusb_get_string_descriptor_ascii(devh, desc.iManufacturer, (unsigned char*)str64, sizeof(str64));
+
+                    if (result > 0) {
+                        if (printmode) printf(" : %s", str64);
+                        if (currentId == id)
+                            result = libusb_get_string_descriptor_ascii(devh, desc.iManufacturer, (unsigned char*)Manufacturer, sizeof(Manufacturer));
+                } }
+                if (desc.iProduct) {
+                    result = libusb_get_string_descriptor_ascii(devh, desc.iProduct, (unsigned char*)str64, sizeof(str64));
+                    if (result > 0) {
+                        if (printmode) printf("  %s", str64);
+                        if (currentId == id)
+                            result = libusb_get_string_descriptor_ascii(devh, desc.iProduct, (unsigned char*)Product, sizeof(Product));
+                } }
+
+                if (desc.iSerialNumber) {
+                    result = libusb_get_string_descriptor_ascii(devh, desc.iSerialNumber, (unsigned char*)str64, sizeof(str64));
+                    if (result > 0) {
+                        if (printmode) printf("  %s", str64);
+                        if (currentId == id)
+                            result = libusb_get_string_descriptor_ascii(devh, desc.iSerialNumber, (unsigned char*)SerialNumber, sizeof(SerialNumber));
+                } }
+                libusb_free_config_descriptor(config_desc);
+            } // config_desc
+        }
+        if (foundDev) { // only for a valid device
+            if (currentId == id)  { // for the device select, go deper and show interfaces
+
+                if ((result = libusb_open(dev, &devh)) < 0)  {
+                    if (printmode) printf(" ** ERROR %d **\n",result);
                     libusb_free_device_list(devs, 1);
                     return -1;
                 }  else {
+                    founddev = dev;
+                    BCDdevice = desc.bcdDevice;
 
                     libusb_config_descriptor *config_desc = NULL;
                     libusb_get_active_config_descriptor(dev, &config_desc); 
                     if (config_desc != NULL)  {
-                        if (desc.iManufacturer) {
-                            int ret = libusb_get_string_descriptor_ascii(devh, desc.iManufacturer, (unsigned char*)Manufacturer, sizeof(Manufacturer));
-                            if (list & (ret > 0))
-                                printf("\n      %s\n", Manufacturer); }
-
-                        if (desc.iProduct) {
-                            int ret = libusb_get_string_descriptor_ascii(devh, desc.iProduct, (unsigned char*)Product, sizeof(Product));
-                            if (list & (ret > 0))
-                                printf("      %s\n", Product); }
-
-                        if (desc.iSerialNumber) {
-                            int ret = libusb_get_string_descriptor_ascii(devh, desc.iSerialNumber, (unsigned char*)SerialNumber, sizeof(SerialNumber));
-                            if (list & (ret > 0))
-                                printf("      %s\n", SerialNumber); }
-
+                        if (printmode) printf("\n");
+                        // for each interface
                         for (int j = 0; j < config_desc->bNumInterfaces; j++) {
+
                             const libusb_interface_descriptor *inter_desc = ((libusb_interface *)&config_desc->interface[j])->altsetting;
 
                             if (inter_desc->bInterfaceClass == 0xFE && // DFU class
                                 inter_desc->bInterfaceSubClass == 0x1)  {
                                        XMOS_DFU_IF = j;
-                                       if (list)
-                                       printf("          (%d)  usb DFU\n",j); }
+                                       if (printmode>1) printf("      (%d)  usb DFU\n",j); }
 
                             if (inter_desc->bInterfaceClass == LIBUSB_CLASS_AUDIO &&
                                 inter_desc->bInterfaceSubClass == 0x01)  {
-                                if (list)
-                                       printf("          (%d)  usb Audio Control\n",j); }
+                                if (printmode>1) printf("      (%d)  usb Audio Control\n",j); }
 
                             if (inter_desc->bInterfaceClass == LIBUSB_CLASS_AUDIO &&
                                 inter_desc->bInterfaceSubClass == 0x02)  {
-
-                                if (list)
-                                       printf("          (%d)  usb Audio Streaming\n",j); }
+                                if (printmode>1) printf("      (%d)  usb Audio Streaming\n",j); }
 
                             if (inter_desc->bInterfaceClass == LIBUSB_CLASS_AUDIO &&
                                 inter_desc->bInterfaceSubClass == 0x03)  {
-
-                                if (list)
-                                       printf("          (%d)  usb Midi Streaming\n",j); }
+                                if (printmode>1) printf("      (%d)  usb Midi Streaming\n",j); }
 
                             if (inter_desc->bInterfaceClass == LIBUSB_CLASS_HID &&
                                 inter_desc->bInterfaceSubClass == 0x00)  {
-
-                                if (list)
-                                       printf("          (%d)  usb HID\n",j); }
+                                if (printmode>1) printf("      (%d)  usb HID\n",j); }
 
                             if (inter_desc->bInterfaceClass == LIBUSB_CLASS_COMM &&
                                 inter_desc->bInterfaceSubClass == 0x00)  {
-
-                                if (list)
-                                       printf("          (%d)  usb Communication\n",j); }
+                                if (printmode>1) printf("      (%d)  usb Communication\n",j); }
                             if (inter_desc->bInterfaceClass == LIBUSB_CLASS_DATA &&
                                 inter_desc->bInterfaceSubClass == 0x00)  {
-
-                                if (list)
-                                       printf("          (%d)  usb CDC Serial\n",j); }
+                                if (printmode>1) printf("      (%d)  usb CDC Serial\n",j); }
                            }
                     } else {
-                        printf("\n     NO config descriptor ...?\n"); }
+                        if (printmode) printf(" ** NO config descriptor **\n"); }
 
                 } // libusb_open
-                if (!list) break;  // device selected : leave the loop
-
+                if (!list) break;  // device selected : leave the loop, device is opened
+                libusb_close(devh);
             } // if currentId == id
             currentId++;
 
@@ -274,9 +284,12 @@ static int find_xmos_device(unsigned int id, unsigned int list) // list !=0 mean
 
     } // while 1
 
+    if (founddev)
+        result = libusb_open(founddev, &devh);
+    if (printmode) printf("\n");
     libusb_free_device_list(devs, 1);
 
-    return devh ? 0 : -1;
+    return devh ? 0 : -1;   // if a device was found then the devh handler is not nul and the device is "opened" and XMOS_DFU_IF contains interface number
 }
 
 
@@ -490,6 +503,8 @@ enum VendorCommandsDsp {
 };
 
 
+unsigned int param1   = 0;                  // command line parameter
+
 
 #if defined ( SAMD_CMD ) && ( SAMD_CMD > 0 )
 #include "xmosusb_samd.h"
@@ -565,30 +580,33 @@ int main(int argc, char **argv) {
   }
 
   if (argc > 1) {
-
       // extract deviceID forced by user eventually
       if (strlen(argv[1]) == 1) {
           deviceID = atoi(argv[1]);
-          printf("action on device [%d]\n",deviceID);
           if (argc > 2) argi=2;
-      } else
-      if ((strlen(argv[1]) == 6) && (argv[1][0]>='0') ) {
-          deviceSerial = atoi(argv[1]);
-          printf("action on device %s\n",argv[1]);
-          if (argc > 2) argi=2;
+      } else {
+          if ( (argv[1][0] >= '0') && (argv[1][0] <= '9')) {
+              deviceSerial = argv[1];
+              printf("Action only for device %s\n",deviceSerial);
+              if (argc > 2) argi=2;
+          }
       }
+  }
+// interception for Okto research
+#ifdef OKTO_MODE
+      if (argc > argi) {
+          char * testcmd = strstr( argv[argi], "-" );
+          if (testcmd != argv[argi]) {
+              exit(execute_file(argv[argi])); }
+      } else {
+          exit(execute_file(NULL));
+      }
+#endif
 
-  // check if there is some argument, to avoid errors when accessing pointer ...
+      // check if there is some argument, to avoid errors when accessing pointer ...
   if (argc > argi) {
 
       // if not a command then passing over to okto special program, considering parameter as a filename.
-      char * testcmd = strstr( argv[argi], "-" );
-      if (testcmd != argv[argi]) {
-#ifdef OKTO_MODE
-          exit(execute_file(argv[argi]));
-#endif
-          return -1; }
-
   if (strcmp(argv[argi], "--xmosload") == 0) {
     if (argv[argi+1]) {
       filename = argv[argi+1];
@@ -602,11 +620,9 @@ int main(int argc, char **argv) {
           listdev = 1; }
   else
   if(strcmp(argv[argi], "--resetdevice") == 0) {
-          listdev = 1;
           resetdevice = 1; }
   else
   if(strcmp(argv[argi], "--test") == 0) {
-          listdev = 1;
           modetest = 1; }
   else
 
@@ -631,21 +647,20 @@ int main(int argc, char **argv) {
     fprintf(stderr, "Invalid option passed to usb application\n");
     exit(-1); }
   }
-}
 
   // now program is really starting
 
   // opening lib usb
   r = libusb_init(NULL);
   if (r < 0) {
-    fprintf(stderr, "failed to initialise libusb...\n");
+    fprintf(stderr, "ERROR : Failed to initialise libusb...\n");
     exit(-1); }
 
   // searching for usb device
-  r = find_xmos_device(0, listdev); // if listdev = 1, this will print all devices found
+  r = find_usb_device(deviceID, listdev, 2); // if listdev = 1, this will print all devices found
   if (r < 0)  {
       if(!listdev) {
-          fprintf(stderr, "Could not find a valid usb device [%d]\n",listdev);
+          fprintf(stderr, "Could not find a valid usb device [%d]\n",deviceID);
           exit(-1); }
   }
 
@@ -672,7 +687,7 @@ int main(int argc, char **argv) {
               SLEEP(1);
               for (int i=1; i<=10; i++) {
                   printf("%d / 10 seconds\r",i);
-                  if ((result = find_xmos_device(0, 0)) >= 0) break;
+                  if ((result = find_usb_device(deviceID, 0, 0)) >= 0) break;
                   SLEEP(1);
               }
               if (result >= 0) {

@@ -32,29 +32,34 @@ while(1) {
 }
 
 
-int search_okto_product(){
+int search_okto_product(char * filename){
 
-    printf("Searching our product on the USB bus ...");
-    int r = find_xmos_device(0, 0); // if listdev = 1, this will print all devices found
+    printf("Searching product on the USB bus ...");
+    int r = find_usb_device(deviceID, 0, 1);
     if (r < 0)  {
+        find_usb_device(0,1,1);
         fprintf(stderr, "\nCould not find a valid usb device\n\n");
         exit(-1); }
 
     int dac = 0;
     char * teststr = strstr(Product, "DAC8PRO");
     if (teststr == Product) {
-        printf("\nfound DAC8PRO (%s) v%d.%02X\n",SerialNumber,BCDdevice>>8,BCDdevice & 0xFF);
+        printf("found DAC8PRO v%d.%02X\n",BCDdevice>>8,BCDdevice & 0xFF);
         Product[7] = 0;
         dac = 1;
     } else {
         teststr = strstr(Product, "DAC8STEREO");
         if (teststr == Product) {
-            printf("\nfound DAC8STEREO (%s) v%d.%02X\n",SerialNumber,BCDdevice>>8,BCDdevice & 0xFF);
+            printf("found DAC8STEREO v%d.%02X\n",BCDdevice>>8,BCDdevice & 0xFF);
             Product[10] = 0;
             dac = 2;
         }
     }
-    if (dac == 0) { printf("product not supported with this tool.\n"); exit(-1); }
+        if (dac == 0) {
+            if (deviceID) printf("Device [%d] not found\n",deviceID);
+            else printf("No compatible product found...\n");
+            if (filename == NULL) find_usb_device(0, 0, 1);
+            exit(-1); }
 
     return dac;
 }
@@ -69,23 +74,34 @@ int execute_file(char * filename){
       fprintf(stderr, "failed to initialise libusb...\n");
       exit(-1); }
 
-    int result = search_okto_product();
+    int result = search_okto_product(filename);
+
+    int defaultfile = 0;
+    if (filename == NULL) {
+        defaultfile = 1;
+        filename = strcat(Product,".bin");
+    }
 
     char * teststr = strstr(filename, Product);
     if (teststr != filename) {
-        printf("file not compatible with %s\n",Product);
+        printf("file %s not compatible with %s\n",filename,Product);
         exit(-1);
     }
-#if 1
+
     inFile = fopen( filename, "rb" );
 
     if( inFile == NULL ) {
+        if (defaultfile) {
+            printf("no file for upgrade, please specify a binary file in the command line\n");
+            exit(-1);
+        }
       fprintf(stderr,"Error: Failed to open input file or file not found.\n");
-      return -1;
+      exit(-1);
     }
+    printf("Opening file %s\n", filename);
 
     fclose(inFile);
-#endif
+
     printf("Upgrading USB firmware, do not disconnect...\n");
     xmos_enterdfu(XMOS_DFU_IF);
     SLEEP(1);
@@ -96,7 +112,7 @@ int execute_file(char * filename){
         SLEEP(1);
         for (int i=1; i<=10; i++) {
             printf("%d / 10 seconds\r",i);
-            if ((result = find_xmos_device(0, 0)) >= 0) break;
+            if ((result = find_usb_device(0, 0, 0)) >= 0) break;
             SLEEP(1);
         }
     }
@@ -107,7 +123,6 @@ int execute_file(char * filename){
         printf("\nProblem during upgrade. disconnect, unplug-plug power supply, reconnect and retry\n");
         exit(-1);
     }
-
 
     libusb_close(devh);
     libusb_exit(NULL);
