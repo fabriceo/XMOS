@@ -12,14 +12,11 @@
 #ifndef DSP_CMD
 #define DSP_CMD   1      // this will include all dsp and flash related feature
 #endif
-#ifndef DAC_CMD
-#define DAC_CMD   1      // this will include commands related to status and dac modes
+#ifndef DAC8_CMD
+#define DAC8_CMD   1      // this will include commands related to status and dac modes
 #endif
 #ifndef BIN2HEX_CMD
 #define BIN2HEX_CMD   1 // this will include commands related to status and dac modes
-#endif
-#ifndef OKTO_MODE       // specific handler for okto research (non public code)
-#define OKTO_MODE 1
 #endif
 
 #if defined(__APPLE__)
@@ -43,7 +40,7 @@
 
 #define XMOS_XCORE_AUDIO_AUDIO2_PID 0x3066
 #define XMOS_DXIO                   0x2009
-#define XMOS_OKTO_INITIAL           0x2009
+#define XMOS_DAC8_INITIAL           0x2009
 #define XMOS_L1_AUDIO2_PID          0x0002
 #define XMOS_L1_AUDIO1_PID          0x0003
 #define XMOS_L2_AUDIO2_PID          0x0004
@@ -52,7 +49,7 @@
 
 unsigned short pidList[] = {XMOS_XCORE_AUDIO_AUDIO2_PID, 
 						    XMOS_DXIO,
-						    XMOS_OKTO_INITIAL,
+						    XMOS_DAC8_INITIAL,
                             XMOS_L1_AUDIO2_PID,
                             XMOS_L1_AUDIO1_PID,
                             XMOS_L2_AUDIO2_PID,
@@ -518,8 +515,8 @@ unsigned int param1   = 0;                  // command line parameter
 #if defined ( BIN2HEX_CMD ) && ( BIN2HEX_CMD > 0 )
 #include "xmosusb_bin2hex.h"
 #endif
-#if defined ( OKTO_MODE ) && ( OKTO_MODE > 0 )
-#include "xmosusb_okto.h"
+#if defined ( DAC8_CMD ) && ( DAC8_CMD > 0 )
+#include "xmosusb_dac8.h"
 #endif
 
 /*********
@@ -592,8 +589,8 @@ int main(int argc, char **argv) {
           }
       }
   }
-// interception for Okto research
-#ifdef OKTO_MODE
+// interception for dac8stereo or dac8pro
+#ifdef DAC8_CMD
       if (argc > argi) {
           char * testcmd = strstr( argv[argi], "-" );
           if (testcmd != argv[argi]) {
@@ -606,7 +603,7 @@ int main(int argc, char **argv) {
       // check if there is some argument, to avoid errors when accessing pointer ...
   if (argc > argi) {
 
-      // if not a command then passing over to okto special program, considering parameter as a filename.
+      // if not a command then passing over to special program, considering parameter as a filename.
   if (strcmp(argv[argi], "--xmosload") == 0) {
     if (argv[argi+1]) {
       filename = argv[argi+1];

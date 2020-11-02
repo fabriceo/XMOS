@@ -163,7 +163,7 @@ void samd_printcmd() {
     fprintf(stderr, "--samdreflash\n");      // re-initiate flashing the front panel firmware with the binary file embeded in xmos source code.
     fprintf(stderr, "--samdbootloader\n");   // enters samd into bootloader mode, to prepare for erasing and downloading new fw
     fprintf(stderr, "--samdbootloaderversion\n");      // provide the text received when sending V# to the bootloader
-    fprintf(stderr, "--samdreset\n");        // reinitialize oktodac application and cycle reset front panel
+    fprintf(stderr, "--samdreset\n");        // reinitialize dac application and cycle reset front panel
     fprintf(stderr, "--samderase\n");        // erase all samd flash
 }
 
