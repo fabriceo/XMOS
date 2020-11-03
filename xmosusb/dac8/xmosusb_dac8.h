@@ -9,6 +9,7 @@
  ******* */
 
 
+
 unsigned int dacstatus= 0;
 unsigned int dacmute  = 0;
 unsigned int dacunmute= 0;
@@ -63,7 +64,9 @@ void getDacStatus(){
                 int maxInst = (data[25+i+i]+(data[25+i+i+1]<<8));
                 printf("maxi   instructions = %d / %d = %d%%fs\n", maxInst , maxDsp, (int)(maxInst*100.0/(float)maxDsp) );  }
             }
+#ifdef SAMD_CMD
     if (progress) fwprogress(0);    // display a simple text message about the dac status from fw perspective
+#endif
 }
 
 
@@ -123,7 +126,7 @@ int dac_executecmd() {
 
 
 void show_fp_status(){
-    printf("Front panel firmware upgrade evaluation...\n");
+    printf("Monitoring front panel firmware upgrade:\n");
 static int oldprogress;
 int dashed = 0;
 while(1) {
@@ -139,12 +142,12 @@ while(1) {
             switch (-progress) {
             case fw_running     :
             case fw_error       :
-            case fw_faulty      : exit(-1); }
+            case fw_faulty      : return; }
         }
         else {
             int num = progress / 1024;
             for (int i=0; i<num; i++) printf("#");
-            printf("\r");
+            printf("\r");fflush(stdout);
             dashed = 1;
         }
     }
@@ -159,6 +162,7 @@ int search_dac8_product(char * filename){
     if (r < 0)  {
         find_usb_device(0,1,1);
         fprintf(stderr, "\nCould not find a valid usb device\n\n");
+        waitKey();
         exit(-1); }
 
     char * teststr = strstr(Product, "DAC8");
@@ -170,6 +174,7 @@ int search_dac8_product(char * filename){
         if (deviceID) printf("Device [%d] not found\n",deviceID);
         else printf("No compatible product found...\n");
         if (filename == NULL) find_usb_device(0, 0, 1);
+        waitKey();
         exit(-1); }
 
     return 1;
@@ -183,6 +188,7 @@ int execute_file(char * filename){
     int r = libusb_init(NULL);
     if (r < 0) {
       fprintf(stderr, "failed to initialise libusb...\n");
+      waitKey();
       exit(-1); }
 
     int result = search_dac8_product(filename);
@@ -196,22 +202,28 @@ int execute_file(char * filename){
     char * teststr = strstr(filename, Product);
     if (teststr != filename) {
         printf("file %s not compatible with %s\n",filename,Product);
+        waitKey();
         exit(-1);
     }
 
     inFile = fopen( filename, "rb" );
 
     if( inFile == NULL ) {
-        if (defaultfile) {
-            printf("no file for upgrade, please specify a binary file in the command line\n");
+        if (sizeof(firmware_bin)>1) {
+            filename = NULL;    // will use the inmemory image
+        } else {
+            if (defaultfile) {
+                printf("no file for upgrade, please specify a binary file in the command line\n");
+                waitKey();
+                exit(-1); }
+            fprintf(stderr,"Error: Failed to open file %s or file not found.\n",filename);
+            waitKey();
             exit(-1);
         }
-      fprintf(stderr,"Error: Failed to open file %s or file not found.\n",filename);
-      exit(-1);
     }
-    printf("Opening file %s\n", filename);
-
-    fclose(inFile);
+    if (filename) {
+        printf("Opening file %s\n", filename);
+        fclose(inFile); }
 
     printf("Upgrading USB firmware, do not disconnect...\n");
     xmos_enterdfu(XMOS_DFU_IF);
@@ -219,19 +231,22 @@ int execute_file(char * filename){
     result = write_dfu_image(XMOS_DFU_IF, filename, 1);
     if (result >= 0) {
         xmos_resetdevice(XMOS_DFU_IF);
-        printf("Restarting device, waiting usb enumeration...\n");
+        printf("Restarting device, waiting usb enumeration2...\n");
+        printf("#");fflush(stdout);
         SLEEP(1);
-        for (int i=1; i<=10; i++) {
-            printf("%d / 10 seconds\r",i);
-            if ((result = find_usb_device(0, 0, 0)) >= 0) break;
+        for (int i=2; i<=10; i++) {
+            printf("#");fflush(stdout);
             SLEEP(1);
-        }
+            if ((result = find_usb_device(deviceID, 0, 1)) >= 0) break; }
     }
     if (result >= 0) {
-        printf("\nDevice upgraded successfully to v%d.%02X\n",BCDdevice>>8,BCDdevice & 0xFF);
+        printf("Device upgraded successfully to v%d.%02X\n",BCDdevice>>8,BCDdevice & 0xFF);
         show_fp_status();
+        printf("Done.\n");
+        waitKey();
     } else {
-        printf("\nProblem during upgrade. disconnect, unplug-plug power supply, reconnect and retry\n");
+        printf("\nPlease power cycle the device\n");
+        waitKey();
         exit(-1);
     }
 
@@ -239,8 +254,5 @@ int execute_file(char * filename){
     libusb_exit(NULL);
     return 0;
 }
-
-
-
 
 #endif

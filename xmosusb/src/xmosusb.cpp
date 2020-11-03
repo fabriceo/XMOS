@@ -19,6 +19,16 @@
 #define BIN2HEX_CMD   1 // this will include commands related to status and dac modes
 #endif
 
+const unsigned int firmware_bin[] = {
+#if defined( DAC8STEREO )
+#include "DAC8STEREO.bin.h"
+#elif defined( DAC8PRO )
+#include "DAC8PRO.bin.h"
+#else
+    0
+#endif
+};
+
 #if defined(__APPLE__)
 #define SLEEP(n) system("sleep " #n)
 #elif defined(__linux__)
@@ -89,6 +99,9 @@ unsigned XMOS_DFU_IF  = 0;                  // interface number used by the DFU 
 unsigned int deviceID = 0;                  // device number selected by the user in the command line (usefull when many xmos device found)
 char * deviceSerial;                        // serial number found in the command line typed by the user
 
+int foundDevices;
+int devicePid;
+
 // helpers
 unsigned char data[64];                     // global var used to exchange data between host-client
 
@@ -124,6 +137,13 @@ static char Product[64] = "";
 static char SerialNumber[16] = "";
 unsigned BCDdevice = 0;
 
+
+static void waitKey(){
+    fprintf(stderr,"Press ENTER to continue...\n");
+    char ch;
+    scanf("%c",&ch);
+}
+
 static int find_usb_device(unsigned int id, unsigned int list, unsigned int printmode) // list !=0 means printing device information
 {
     libusb_device *dev;
@@ -133,6 +153,8 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
     char string[256];
     int result;
     XMOS_DFU_IF = 0;
+    foundDevices = 0;
+    devicePid  = 0;
 
     libusb_get_device_list(NULL, &devs);
     devh = NULL;
@@ -180,6 +202,7 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
 
         if ((list || foundDev)) {   // "list" flag will force displaying all devices, not only the one found
 
+            if (foundDev) foundDevices++;
             if (printmode) {
                 if (foundDev) printf("\n[%d] > ",currentId);
                 else printf("\n      ");
@@ -221,14 +244,15 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
             } // config_desc
         }
         if (foundDev) { // only for a valid device
-            if (currentId == id)  { // for the device select, go deper and show interfaces
+            if ((currentId == id) || (devicePid == desc.idProduct))  { // for the device select, go deper and show interfaces
 
                 if ((result = libusb_open(dev, &devh)) < 0)  {
                     if (printmode) printf(" ** ERROR %d **\n",result);
                     libusb_free_device_list(devs, 1);
                     return -1;
                 }  else {
-                    founddev = dev;
+                    founddev  = dev;
+                    devicePid = desc.idProduct;
                     BCDdevice = desc.bcdDevice;
 
                     libusb_config_descriptor *config_desc = NULL;
@@ -242,38 +266,39 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
 
                             if (inter_desc->bInterfaceClass == 0xFE && // DFU class
                                 inter_desc->bInterfaceSubClass == 0x1)  {
-                                       XMOS_DFU_IF = j;
-                                       if (printmode>1) printf("      (%d)  usb DFU\n",j); }
+                               XMOS_DFU_IF = j;
+                               if (printmode>1) printf("      (%d)  usb DFU\n",j); }
 
-                            if (inter_desc->bInterfaceClass == LIBUSB_CLASS_AUDIO &&
+                            else if (inter_desc->bInterfaceClass == LIBUSB_CLASS_AUDIO &&
                                 inter_desc->bInterfaceSubClass == 0x01)  {
                                 if (printmode>1) printf("      (%d)  usb Audio Control\n",j); }
 
-                            if (inter_desc->bInterfaceClass == LIBUSB_CLASS_AUDIO &&
+                            else if (inter_desc->bInterfaceClass == LIBUSB_CLASS_AUDIO &&
                                 inter_desc->bInterfaceSubClass == 0x02)  {
                                 if (printmode>1) printf("      (%d)  usb Audio Streaming\n",j); }
 
-                            if (inter_desc->bInterfaceClass == LIBUSB_CLASS_AUDIO &&
+                            else if (inter_desc->bInterfaceClass == LIBUSB_CLASS_AUDIO &&
                                 inter_desc->bInterfaceSubClass == 0x03)  {
                                 if (printmode>1) printf("      (%d)  usb Midi Streaming\n",j); }
 
-                            if (inter_desc->bInterfaceClass == LIBUSB_CLASS_HID &&
+                            else if (inter_desc->bInterfaceClass == LIBUSB_CLASS_HID &&
                                 inter_desc->bInterfaceSubClass == 0x00)  {
                                 if (printmode>1) printf("      (%d)  usb HID\n",j); }
 
-                            if (inter_desc->bInterfaceClass == LIBUSB_CLASS_COMM &&
+                            else if (inter_desc->bInterfaceClass == LIBUSB_CLASS_COMM &&
                                 inter_desc->bInterfaceSubClass == 0x00)  {
                                 if (printmode>1) printf("      (%d)  usb Communication\n",j); }
-                            if (inter_desc->bInterfaceClass == LIBUSB_CLASS_DATA &&
+                            else if (inter_desc->bInterfaceClass == LIBUSB_CLASS_DATA &&
                                 inter_desc->bInterfaceSubClass == 0x00)  {
                                 if (printmode>1) printf("      (%d)  usb CDC Serial\n",j); }
+                            else if (printmode>1) printf("     (%d)  %X %X unknown interface\n",j,inter_desc->bInterfaceClass,inter_desc->bInterfaceSubClass);
                            }
                     } else {
                         if (printmode) printf(" ** NO config descriptor **\n"); }
 
                 } // libusb_open
-                if (!list) break;  // device selected : leave the loop, device is opened
                 libusb_close(devh);
+                if (!list) break;  // device selected : leave the loop, device is opened
             } // if currentId == id
             currentId++;
 
@@ -281,9 +306,11 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
 
     } // while 1
 
-    if (founddev)
+    if (founddev)  {
         result = libusb_open(founddev, &devh);
-    if (printmode) printf("\n");
+        if (printmode) printf("\n");
+    }
+
     libusb_free_device_list(devs, 1);
 
     return devh ? 0 : -1;   // if a device was found then the devh handler is not nul and the device is "opened" and XMOS_DFU_IF contains interface number
@@ -343,63 +370,68 @@ int write_dfu_image(unsigned int interface, char *file, int printmode) {
   unsigned char strIndex = 0;
   unsigned int dfuBlockCount = 0;
 
-  inFile = fopen( file, "rb" );
-  if( inFile == NULL ) {
-    fprintf(stderr,"Error: Failed to open input data file.\n");
-    return -1;
+  if (file) {
+      inFile = fopen( file, "rb" );
+      if( inFile == NULL ) {
+        fprintf(stderr,"Error: Failed to open input data file.\n");
+        return -1;
+      }
+
+      /* Discover the size of the image. */
+      if( 0 != fseek( inFile, 0, SEEK_END ) ) {
+        fprintf(stderr,"Error: Failed to discover input data file size.\n");
+        return -1;
+      }
+
+      image_size = (int)ftell( inFile );
+
+      if( 0 != fseek( inFile, 0, SEEK_SET ) ) {
+        fprintf(stderr,"Error: Failed to input file pointer.\n");
+       return -1;
+      }
+  } else {
+      image_size = sizeof(firmware_bin);
   }
-
-  /* Discover the size of the image. */
-  if( 0 != fseek( inFile, 0, SEEK_END ) ) {
-    fprintf(stderr,"Error: Failed to discover input data file size.\n");
-    return -1;
-  }
-
-  image_size = (int)ftell( inFile );
-
-  if( 0 != fseek( inFile, 0, SEEK_SET ) ) {
-    fprintf(stderr,"Error: Failed to input file pointer.\n");
-   return -1; 
-  }
-
   num_blocks = image_size/block_size;
-  remainder = image_size - (num_blocks * block_size);
+  remainder  = image_size - (num_blocks * block_size);
 
-  printf("... Downloading image (%s) to device (%dbytes)\n", file,image_size);
- 
+  printf("Verifying image (%dkb)\n",(image_size+1023)/1024);
+
   dfuBlockCount = 0; 
 
   for (i = 0; i < num_blocks; i++) {
-    memset(block_data, 0x0, block_size);
-    fread(block_data, 1, block_size, inFile);
-    //if (i == 0) printf("first block download includes time to erase all flash\n");
-    int numbytes = dfu_download(interface, dfuBlockCount, block_size, block_data);
-    if (i == 0) {
-        //printf("result = %d bytes\n",numbytes);
-        if (numbytes != 64) {
-            fprintf(stderr,"Error: dfudownload returned an error %d\n",numbytes);
-           return -1; }
-    }
+    memset(data, 0x0, block_size);
+    if (file) fread(data, 1, block_size, inFile);
+    else
+        for (int j=0; j<16; j++) storeInt(j*4,firmware_bin[i*16+j]);
+    if (i == 0) printf("Preparing flash memory\n");
+    if (i==1) printf("Downloading data...\n");
+    int numbytes = dfu_download(interface, dfuBlockCount, block_size, data);
+    if (numbytes != 64) {
+        fprintf(stderr,"Error: dfudownload step %d returned an error %d.\n",i,numbytes);
+       return -1; }
     dfu_getStatus(interface, &dfuState, &timeout, &nextDfuState, &strIndex);
     dfuBlockCount++;
     if (printmode == 0) {
-        if ((dfuBlockCount & 127) == 0) printf("%dko\n",dfuBlockCount >> 4);
-    } else if ((dfuBlockCount & 127) == 0) printf("#");
+        if ((dfuBlockCount & 127) == 0) { printf("%dko\r",dfuBlockCount >> 4); fflush(stdout); }
+    } else if ((dfuBlockCount & 127) == 0) { printf("#");fflush(stdout); }
   }
   if (printmode) printf("\n");
 
   if (remainder) {
-    memset(block_data, 0x0, block_size);
-    fread(block_data, 1, remainder, inFile);
-    dfu_download(interface, dfuBlockCount, block_size, block_data);
+    memset(data, 0x0, block_size);
+    if (file) fread(data, 1, remainder, inFile);
+    else
+        for (int j=0; j<16; j++) storeInt(j*4,firmware_bin[i*16+j]);
+    dfu_download(interface, dfuBlockCount, block_size, data);
     dfu_getStatus(interface, &dfuState, &timeout, &nextDfuState, &strIndex);
   }
-   printf("Transfered %d bytes\n",image_size);
+   printf("Transfered %d bytes completed.\n",image_size);
 
   dfu_download(interface, 0, 0, NULL);
   dfu_getStatus(interface, &dfuState, &timeout, &nextDfuState, &strIndex);
 
-  printf("Firmware upgrade done\n");
+  printf("USB firmware upgrade done.\n");
 
   return 0;
 }
@@ -509,9 +541,6 @@ unsigned int param1   = 0;                  // command line parameter
 #if defined ( DSP_CMD ) && ( DSP_CMD > 0 )
 #include "xmosusb_dsp.h"
 #endif
-#if defined ( DAC_CMD ) && ( DAC_CMD > 0 )
-#include "xmosusb_dac.h"
-#endif
 #if defined ( BIN2HEX_CMD ) && ( BIN2HEX_CMD > 0 )
 #include "xmosusb_bin2hex.h"
 #endif
@@ -559,7 +588,7 @@ int main(int argc, char **argv) {
 #if defined( DSP_CMD ) && ( DSP_CMD > 0)
         dsp_printcmd();
 #endif
-#if defined( DAC_CMD ) && ( DAC_CMD > 0)
+#if defined( DAC8_CMD ) && ( DAC8_CMD > 0)
         dac_printcmd();
 #endif
         return -1; }
@@ -570,8 +599,7 @@ int main(int argc, char **argv) {
 #ifdef BIN2HEX_CMD
       if (strcmp(argv[1], "--bin2hex") == 0) {
         if (argv[2]) {
-          bin2hex(argv[2]);
-          exit(1); }
+            exit(bin2hex(argv[2])); }
       }
 #endif
   }
@@ -635,7 +663,7 @@ int main(int argc, char **argv) {
   else
 #endif
 
-#if defined( DAC_CMD ) && ( DAC_CMD > 0)
+#if defined( DAC8_CMD ) && ( DAC8_CMD > 0)
   if (dac_testcmd(argc, argv, argi)) { }
   else
 #endif
@@ -663,9 +691,18 @@ int main(int argc, char **argv) {
 
    printf("\n");
    if(resetdevice)  {
-      printf("rebooting device\n");
+      printf("Sending reboot command...\n");
       vendor_to_dev(VENDOR_RESET_DEVICE,0,0);
-        printf("done.\n");
+      printf("Device restarting, waiting usb re-enumeration...\n");
+      int result;
+      printf("#");fflush(stdout);
+        SLEEP(1);
+        for (int i=2; i<=10; i++) {
+            printf("#");fflush(stdout);
+            SLEEP(1);
+            if ((result = find_usb_device(deviceID, 0, 1)) >= 0) break;
+        }
+        if (result <0) printf("\nDevice not connected after 10sec...\n");
     }
    else
    if(modetest)  {
@@ -701,7 +738,7 @@ int main(int argc, char **argv) {
       else if (dsp_executecmd()) { }
 #endif
 
-#if defined( DAC_CMD ) && ( DAC_CMD > 0)
+#if defined( DAC8_CMD ) && ( DAC8_CMD > 0)
       else if (dac_executecmd()) { }
 #endif
 

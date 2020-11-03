@@ -10,6 +10,11 @@ int * unsafe g_aud_to_host_dptr;
 void usbbuffer() {
 
     // initialisation here ...
+    int speedRemain = 0;    // local for usb_in, different from the one used in decouple
+    usbfifo_t * pusbfifoIN;  usbfifo_getAddress_IN(pusbfifoIN);
+    usbfifo_t * pusbfifoOUT; usbfifo_getAddress_OUT(pusbfifoOUT);
+    aud_from_host_reset();
+    aud_to_host_reset();
 
     while(1) {
         /* Wait for response from XUD  */

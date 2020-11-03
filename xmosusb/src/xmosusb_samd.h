@@ -100,7 +100,7 @@ void printfwstatus(int status){
         case fw_checking    : printf("Checking front panel fw version\n"); break;
         case fw_checkfailed : printf("fw check failed\n"); break;
         case fw_obsolete    : printf("fw older than xmos embedded fw\n"); break;
-        case fw_running     : printf("Device running\n"); break;
+        case fw_running     : printf("Device running ok\n"); break;
         case fw_startflashing  : printf("Front panel flashing started\n"); break;
         case fw_bootloader  : printf("Enterring bootloader\n"); break;
         case fw_waitbootloader  : printf("Waiting bootloader ack\n"); break;
