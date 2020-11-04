@@ -19,15 +19,6 @@
 #define BIN2HEX_CMD   1 // this will include commands related to status and dac modes
 #endif
 
-const unsigned int firmware_bin[] = {
-#if defined( DAC8STEREO )
-#include "DAC8STEREO.bin.h"
-#elif defined( DAC8PRO )
-#include "DAC8PRO.bin.h"
-#else
-    0
-#endif
-};
 
 #if defined(__APPLE__)
 #define SLEEP(n) system("sleep " #n)
@@ -208,49 +199,45 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
                 else printf("\n      ");
                 printf("VID %04X, PID %04X, BCD %04X", desc.idVendor, desc.idProduct, desc.bcdDevice); }
 
-            if ((result = libusb_open(dev, &devh)) < 0)  {
-                if (printmode) printf(" ** ERROR %d **\n",result);
-                libusb_free_device_list(devs, 1);
-                return -1; }
+            if ((result = libusb_open(dev, &devh)) >=0 )  {
 
-            libusb_config_descriptor *config_desc = NULL;
-            libusb_get_active_config_descriptor(dev, &config_desc);
-            if (config_desc != NULL)  {
+                libusb_config_descriptor *config_desc = NULL;
+                libusb_get_active_config_descriptor(dev, &config_desc);
+                if (config_desc != NULL)  {
 
-                if (desc.iManufacturer) {
-                    result = libusb_get_string_descriptor_ascii(devh, desc.iManufacturer, (unsigned char*)str64, sizeof(str64));
+                    if (desc.iManufacturer) {
+                        result = libusb_get_string_descriptor_ascii(devh, desc.iManufacturer, (unsigned char*)str64, sizeof(str64));
 
-                    if (result > 0) {
-                        if (printmode) printf(" : %s", str64);
-                        if (currentId == id)
-                            result = libusb_get_string_descriptor_ascii(devh, desc.iManufacturer, (unsigned char*)Manufacturer, sizeof(Manufacturer));
-                } }
-                if (desc.iProduct) {
-                    result = libusb_get_string_descriptor_ascii(devh, desc.iProduct, (unsigned char*)str64, sizeof(str64));
-                    if (result > 0) {
-                        if (printmode) printf("  %s", str64);
-                        if (currentId == id)
-                            result = libusb_get_string_descriptor_ascii(devh, desc.iProduct, (unsigned char*)Product, sizeof(Product));
-                } }
+                        if (result > 0) {
+                            if (printmode) printf(" : %s", str64);
+                            if (currentId == id)
+                                result = libusb_get_string_descriptor_ascii(devh, desc.iManufacturer, (unsigned char*)Manufacturer, sizeof(Manufacturer));
+                    } }
+                    if (desc.iProduct) {
+                        result = libusb_get_string_descriptor_ascii(devh, desc.iProduct, (unsigned char*)str64, sizeof(str64));
+                        if (result > 0) {
+                            if (printmode) printf("  %s", str64);
+                            if (currentId == id)
+                                result = libusb_get_string_descriptor_ascii(devh, desc.iProduct, (unsigned char*)Product, sizeof(Product));
+                    } }
 
-                if (desc.iSerialNumber) {
-                    result = libusb_get_string_descriptor_ascii(devh, desc.iSerialNumber, (unsigned char*)str64, sizeof(str64));
-                    if (result > 0) {
-                        if (printmode) printf("  %s", str64);
-                        if (currentId == id)
-                            result = libusb_get_string_descriptor_ascii(devh, desc.iSerialNumber, (unsigned char*)SerialNumber, sizeof(SerialNumber));
-                } }
-                libusb_free_config_descriptor(config_desc);
-            } // config_desc
+                    if (desc.iSerialNumber) {
+                        result = libusb_get_string_descriptor_ascii(devh, desc.iSerialNumber, (unsigned char*)str64, sizeof(str64));
+                        if (result > 0) {
+                            if (printmode) printf("  %s", str64);
+                            if (currentId == id)
+                                result = libusb_get_string_descriptor_ascii(devh, desc.iSerialNumber, (unsigned char*)SerialNumber, sizeof(SerialNumber));
+                    } }
+                    libusb_free_config_descriptor(config_desc);
+                } // config_desc
+                libusb_close(devh);
+            }
         }
         if (foundDev) { // only for a valid device
+
             if ((currentId == id) || (devicePid == desc.idProduct))  { // for the device select, go deper and show interfaces
 
-                if ((result = libusb_open(dev, &devh)) < 0)  {
-                    if (printmode) printf(" ** ERROR %d **\n",result);
-                    libusb_free_device_list(devs, 1);
-                    return -1;
-                }  else {
+                if ((result = libusb_open(dev, &devh)) >= 0)  {
                     founddev  = dev;
                     devicePid = desc.idProduct;
                     BCDdevice = desc.bcdDevice;
@@ -258,6 +245,7 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
                     libusb_config_descriptor *config_desc = NULL;
                     libusb_get_active_config_descriptor(dev, &config_desc); 
                     if (config_desc != NULL)  {
+
                         if (printmode) printf("\n");
                         // for each interface
                         for (int j = 0; j < config_desc->bNumInterfaces; j++) {
@@ -293,11 +281,12 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
                                 if (printmode>1) printf("      (%d)  usb CDC Serial\n",j); }
                             else if (printmode>1) printf("     (%d)  %X %X unknown interface\n",j,inter_desc->bInterfaceClass,inter_desc->bInterfaceSubClass);
                            }
+                        libusb_free_config_descriptor(config_desc);
                     } else {
                         if (printmode) printf(" ** NO config descriptor **\n"); }
 
+                    libusb_close(devh);
                 } // libusb_open
-                libusb_close(devh);
                 if (!list) break;  // device selected : leave the loop, device is opened
             } // if currentId == id
             currentId++;
@@ -355,7 +344,7 @@ int dfu_download(unsigned int interface, unsigned int block_num, unsigned int si
 
 char *filename = NULL;
 
-int write_dfu_image(unsigned int interface, char *file, int printmode) {
+int write_dfu_image(unsigned int interface, char *file, int printmode, const unsigned int *firm, int firmsize) {
   int i = 0;
   FILE* inFile = NULL;
   int image_size = 0;
@@ -390,7 +379,8 @@ int write_dfu_image(unsigned int interface, char *file, int printmode) {
        return -1;
       }
   } else {
-      image_size = sizeof(firmware_bin);
+      if (firm && firmsize) image_size = firmsize;
+      else return -1;
   }
   num_blocks = image_size/block_size;
   remainder  = image_size - (num_blocks * block_size);
@@ -403,7 +393,7 @@ int write_dfu_image(unsigned int interface, char *file, int printmode) {
     memset(data, 0x0, block_size);
     if (file) fread(data, 1, block_size, inFile);
     else
-        for (int j=0; j<16; j++) storeInt(j*4,firmware_bin[i*16+j]);
+        for (int j=0; j<16; j++) storeInt(j*4,firm[i*16+j]);
     if (i == 0) printf("Preparing flash memory\n");
     if (i==1) printf("Downloading data...\n");
     int numbytes = dfu_download(interface, dfuBlockCount, block_size, data);
@@ -422,7 +412,7 @@ int write_dfu_image(unsigned int interface, char *file, int printmode) {
     memset(data, 0x0, block_size);
     if (file) fread(data, 1, remainder, inFile);
     else
-        for (int j=0; j<16; j++) storeInt(j*4,firmware_bin[i*16+j]);
+        for (int j=0; j<16; j++) storeInt(j*4,firm[i*16+j]);
     dfu_download(interface, dfuBlockCount, block_size, data);
     dfu_getStatus(interface, &dfuState, &timeout, &nextDfuState, &strIndex);
   }
@@ -618,7 +608,7 @@ int main(int argc, char **argv) {
       }
   }
 // interception for dac8stereo or dac8pro
-#ifdef DAC8_CMD
+#if defined( DAC8STEREO ) || defined( DAC8PRO )
       if (argc > argi) {
           char * testcmd = strstr( argv[argi], "-" );
           if (testcmd != argv[argi]) {
@@ -714,15 +704,17 @@ int main(int argc, char **argv) {
 
       if (xmosload) {
           xmos_enterdfu(XMOS_DFU_IF);
-          int result = write_dfu_image(XMOS_DFU_IF, filename, 0);
+          int result = write_dfu_image(XMOS_DFU_IF, filename, 0, NULL, 0);
           if (result >= 0) {
+              int oldBCD = BCDdevice;
               xmos_resetdevice(XMOS_DFU_IF);
+              libusb_close(devh);
               printf("Restarting device, waiting usb enumeration...\n");
-              SLEEP(1);
               for (int i=1; i<=10; i++) {
-                  printf("%d / 10 seconds\r",i);
-                  if ((result = find_usb_device(deviceID, 0, 0)) >= 0) break;
                   SLEEP(1);
+                  result = find_usb_device(deviceID, 0, 1);
+                  if ((result >=0) && (oldBCD != BCDdevice)) break;
+                  if (result >=0) libusb_close(devh);
               }
               if (result >= 0) {
                   printf("\nDevice upgraded successfully to v%d.%02X\n",BCDdevice>>8,BCDdevice & 0xFF); }

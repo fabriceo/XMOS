@@ -1,14 +1,32 @@
 #ifndef XMOSUSB_DAC_H
 #define XMOSUSB_DAC_H
-//DAC8PRO
+
+
+
+const unsigned int target_firmware_bin[] = {
+#if defined( DAC8STEREO )
+#include "DAC8STEREO.bin.h"
+#elif defined( DAC8PRO )
+#include "DAC8PRO.bin.h"
+#else
+    0
+#endif
+};
+
+
+const unsigned int interim_firmware_bin[] = {
+#if defined( DAC8STEREO ) || defined( DAC8PRO )
+#include "dac8pro_121.bin.h"
+#else
+    0
+#endif
+};
 
 /* ********
  *
  * Section related to getting information from DAC8pro & DAC8Stereo
  *
  ******* */
-
-
 
 unsigned int dacstatus= 0;
 unsigned int dacmute  = 0;
@@ -209,7 +227,7 @@ int execute_file(char * filename){
     inFile = fopen( filename, "rb" );
 
     if( inFile == NULL ) {
-        if (sizeof(firmware_bin)>1) {
+        if (sizeof(target_firmware_bin)>1) {
             filename = NULL;    // will use the inmemory image
         } else {
             if (defaultfile) {
@@ -225,19 +243,46 @@ int execute_file(char * filename){
         printf("Opening file %s\n", filename);
         fclose(inFile); }
 
+    if (BCDdevice == 0x120) {
+        for (int t=0; t<2;t++) {
+            printf("Upgrading USB firmware to intermediate version 1.21, do not disconnect...\n");
+            xmos_enterdfu(XMOS_DFU_IF);
+            SLEEP(1);
+            result = write_dfu_image(XMOS_DFU_IF, NULL, 1, interim_firmware_bin, sizeof(interim_firmware_bin) );
+            if (result >= 0) {
+                int oldBCD = BCDdevice;
+                xmos_resetdevice(XMOS_DFU_IF);
+                libusb_close(devh);
+                printf("Restarting device, waiting usb enumeration...\n");
+                for (int i=1; i<=10; i++) {
+                    SLEEP(1);
+                    result = find_usb_device(deviceID, 0, 1);
+                    if (result >=0) libusb_close(devh);
+                    if ((result >=0) && (oldBCD != BCDdevice)) break;
+                }
+            }
+            if (BCDdevice == 0x121) {
+                printf("Preliminary upgrade done successfully.\n");
+                break;
+            } else printf("Retrying upgrade...\n");
+        }
+    }
+
     printf("Upgrading USB firmware, do not disconnect...\n");
     xmos_enterdfu(XMOS_DFU_IF);
     SLEEP(1);
-    result = write_dfu_image(XMOS_DFU_IF, filename, 1);
+    result = write_dfu_image(XMOS_DFU_IF, filename, 1, target_firmware_bin, sizeof(target_firmware_bin) );
     if (result >= 0) {
+        int oldBCD = BCDdevice;
         xmos_resetdevice(XMOS_DFU_IF);
-        printf("Restarting device, waiting usb enumeration2...\n");
-        printf("#");fflush(stdout);
-        SLEEP(1);
-        for (int i=2; i<=10; i++) {
-            printf("#");fflush(stdout);
+        libusb_close(devh);
+        printf("Restarting device, waiting usb enumeration...\n");
+        for (int i=1; i<=10; i++) {
             SLEEP(1);
-            if ((result = find_usb_device(deviceID, 0, 1)) >= 0) break; }
+            result = find_usb_device(deviceID, 0, 1);
+            if ((result >=0) && (oldBCD != BCDdevice)) break;
+            if (result >=0) libusb_close(devh);
+        }
     }
     if (result >= 0) {
         printf("Device upgraded successfully to v%d.%02X\n",BCDdevice>>8,BCDdevice & 0xFF);

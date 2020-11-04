@@ -1,8 +1,8 @@
 
 all:
-	gcc -o xmosusb ../src/xmosusb.cpp -I../src -I. -L. -lusb-1.0
+	gcc -o xmosusb ../src/xmosusb.cpp -I../src -I. -I../dac8 -L. -lusb-1.0
 	xmosusb --bin2hex ../dac8/DAC8STEREO.bin
-	g++ -o dac8stereo ../src/xmosusb.cpp -I../src -I. -L. -lusb-1.0 -I../dac8 -DDAC8STEREO
+	g++ -o dac8stereo ../src/xmosusb.cpp -I../src -I. -I../dac8 -L. -lusb-1.0 -DDAC8STEREO
 	xmosusb --bin2hex ../dac8/DAC8PRO.bin
-	g++ -o dac8pro    ../src/xmosusb.cpp -I../src -I. -L. -lusb-1.0 -I../dac8 -DDAC8PRO
+	g++ -o dac8pro    ../src/xmosusb.cpp -I../src -I. -I../dac8 -L. -lusb-1.0 -DDAC8PRO
 	
