@@ -165,8 +165,9 @@ while(1) {
         else {
             int num = progress / 1024;
             for (int i=0; i<num; i++) printf("#");
-            printf("\r");fflush(stdout);
-            dashed = 1;
+            if (num) {
+				printf("\r");fflush(stdout);
+				dashed = 1; }
         }
     }
 }
@@ -228,10 +229,21 @@ int execute_file(char * filename){
 
     if( inFile == NULL ) {
         if (sizeof(target_firmware_bin)>1) {
+			#if defined( DAC8PRO )
+			char * test = strstr(Product, "DAC8PRO");
+			#elif defined ( DAC8STEREO )
+			char * test = strstr(Product, "DAC8STEREO");
+			#else
+			char * test = NULL;
+			#endif
+			if (test != Product) {
+				printf("No embedded %s image file, please specify a binary file in the command line.\n",Product);
+                waitKey();
+				exit(-1); }
             filename = NULL;    // will use the inmemory image
         } else {
             if (defaultfile) {
-                printf("no file for upgrade, please specify a binary file in the command line\n");
+                printf("no file for upgrade, please specify a binary file in the command line.\n");
                 waitKey();
                 exit(-1); }
             fprintf(stderr,"Error: Failed to open file %s or file not found.\n",filename);
@@ -253,12 +265,13 @@ int execute_file(char * filename){
                 int oldBCD = BCDdevice;
                 xmos_resetdevice(XMOS_DFU_IF);
                 libusb_close(devh);
+				SLEEP(1);
                 printf("Restarting device, waiting usb enumeration...\n");
                 for (int i=1; i<=10; i++) {
                     SLEEP(1);
                     result = find_usb_device(deviceID, 0, 1);
+                    if (result >=0) break; //&& (oldBCD != BCDdevice)) break;
                     if (result >=0) libusb_close(devh);
-                    if ((result >=0) && (oldBCD != BCDdevice)) break;
                 }
             }
             if (BCDdevice == 0x121) {
@@ -274,19 +287,25 @@ int execute_file(char * filename){
     result = write_dfu_image(XMOS_DFU_IF, filename, 1, target_firmware_bin, sizeof(target_firmware_bin) );
     if (result >= 0) {
         int oldBCD = BCDdevice;
+		char oldProduct[64];
+		strncpy(oldProduct, Product, 64);
         xmos_resetdevice(XMOS_DFU_IF);
         libusb_close(devh);
-        printf("Restarting device, waiting usb enumeration...\n");
+		SLEEP(1);
+        printf("Restarting device %s, waiting usb enumeration...\n", oldProduct);
         for (int i=1; i<=10; i++) {
             SLEEP(1);
             result = find_usb_device(deviceID, 0, 1);
-            if ((result >=0) && (oldBCD != BCDdevice)) break;
+			int test = strcmp(Product,oldProduct);
+            if ((result >=0) && ((oldBCD != BCDdevice)||(test |= 0))) break;
             if (result >=0) libusb_close(devh);
         }
     }
     if (result >= 0) {
         printf("Device upgraded successfully to v%d.%02X\n",BCDdevice>>8,BCDdevice & 0xFF);
+		
         show_fp_status();
+		
         printf("Done.\n");
         waitKey();
     } else {

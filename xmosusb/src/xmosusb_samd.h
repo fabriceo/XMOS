@@ -95,9 +95,9 @@ int samdloadbinfile(unsigned int interface, char *file) {
 void printfwstatus(int status){
     if (status <= 0)
         switch (-status) {
-        case fw_not_started : printf("Device not started (reseted)\n"); break;
-        case fw_starting    : printf("Device starting (out of reset)\n"); break;
-        case fw_checking    : printf("Checking front panel fw version\n"); break;
+        case fw_not_started : printf("Device reseted\n"); break;
+        case fw_starting    : printf("Device starting\n"); break;
+        case fw_checking    : printf("Checking front panel version\n"); break;
         case fw_checkfailed : printf("fw check failed\n"); break;
         case fw_obsolete    : printf("fw older than xmos embedded fw\n"); break;
         case fw_running     : printf("Device running ok\n"); break;
@@ -110,7 +110,6 @@ void printfwstatus(int status){
         case fw_completed   : printf("Front panel fw upgrade DONE\n"); break;
         case fw_error       : printf("Front panel fw upgrade  ERROR\n"); break;
         case fw_faulty      : printf("Front panel device probably FAULTY...\n"); break;
-        default : printf("\n");
         }
     else {
         printf("downloaded %d bytes\n", status);

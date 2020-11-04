@@ -404,7 +404,7 @@ int write_dfu_image(unsigned int interface, char *file, int printmode, const uns
     dfuBlockCount++;
     if (printmode == 0) {
         if ((dfuBlockCount & 127) == 0) { printf("%dko\r",dfuBlockCount >> 4); fflush(stdout); }
-    } else if ((dfuBlockCount & 127) == 0) { printf("#");fflush(stdout); }
+    } else if ((dfuBlockCount & 63) == 0) { printf("#");fflush(stdout); }
   }
   if (printmode) printf("\n");
 
@@ -707,14 +707,17 @@ int main(int argc, char **argv) {
           int result = write_dfu_image(XMOS_DFU_IF, filename, 0, NULL, 0);
           if (result >= 0) {
               int oldBCD = BCDdevice;
+              char oldProduct[64];
+              strncpy(oldProduct,Product,64);
               xmos_resetdevice(XMOS_DFU_IF);
               libusb_close(devh);
+              SLEEP(1);
               printf("Restarting device, waiting usb enumeration...\n");
               for (int i=1; i<=10; i++) {
                   SLEEP(1);
                   result = find_usb_device(deviceID, 0, 1);
-                  if ((result >=0) && (oldBCD != BCDdevice)) break;
-                  if (result >=0) libusb_close(devh);
+                  if (result >=0) break;
+                  //if (result >=0) libusb_close(devh);
               }
               if (result >= 0) {
                   printf("\nDevice upgraded successfully to v%d.%02X\n",BCDdevice>>8,BCDdevice & 0xFF); }
