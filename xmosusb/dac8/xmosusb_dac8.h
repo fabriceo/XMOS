@@ -86,7 +86,7 @@ void getDacStatus(){
                 int maxInst = (data[25+i+i]+(data[25+i+i+1]<<8));
                 printf("maxi   instructions = %d / %d = %d%%fs\n", maxInst , maxDsp, (int)(maxInst*100.0/(float)maxDsp) );  }
             }
-#ifdef SAMD_CMD
+#if defined( SAMD_CMD ) && (SAMD_CMD > 0)
     if (progress) fwprogress(0);    // display a simple text message about the dac status from fw perspective
 #endif
 }
@@ -160,7 +160,7 @@ while(1) {
         oldprogress = progress;
         if (progress <= 0) {
             if (dashed) printf("\n");
-#ifdef SAMD_CMD
+#if defined( SAMD_CMD ) && (SAMD_CMD > 0)
             printfwstatus(progress);
 #endif
             switch (-progress) {

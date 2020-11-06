@@ -570,7 +570,7 @@ int main(int argc, char **argv) {
         fprintf(stderr, "--listdevices\n");      // list all the USB devices and point the one with xmos vendor ID
         fprintf(stderr, "--resetdevice\n");      // send a DFU command for reseting the device
         fprintf(stderr, "--xmosload file\n");    // load a new firmware into the xmos flash boot partition
-#ifdef BIN2HEX_CMD
+#if defined ( BIN2HEX_CMD ) && ( BIN2HEX_CMD > 0 )
         fprintf(stderr, "--bin2hex  file\n");    // convert a binary file into a text file with hexadecimal presentation grouped by 4 bytes, for C/C++ include
 #endif
 #if defined( SAMD_CMD ) && ( SAMD_CMD > 0)
@@ -587,7 +587,7 @@ int main(int argc, char **argv) {
 
   if (argc > 2) {
 
-#ifdef BIN2HEX_CMD
+#if defined ( BIN2HEX_CMD ) && ( BIN2HEX_CMD > 0 )
       if (strcmp(argv[1], "--bin2hex") == 0) {
         if (argv[2]) {
             exit(bin2hex(argv[2])); }
