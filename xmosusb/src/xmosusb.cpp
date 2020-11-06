@@ -200,7 +200,7 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
                 else printf("\n      ");
                 printf("VID %04X, PID %04X, BCD %04X", desc.idVendor, desc.idProduct, desc.bcdDevice); }
             if ((devhopen = libusb_open(dev, &devh)) >=0 )  {
-            	printf("*open*") ;
+
                 libusb_config_descriptor *config_desc = NULL;
                 libusb_get_active_config_descriptor(dev, &config_desc);
                 if (config_desc != NULL)  {
