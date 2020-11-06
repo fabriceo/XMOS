@@ -1,5 +1,5 @@
-#ifndef XMOSUSB_DAC_H
-#define XMOSUSB_DAC_H
+#ifndef XMOSUSB_DAC8_H
+#define XMOSUSB_DAC8_H
 
 
 
@@ -8,15 +8,19 @@ const unsigned int target_firmware_bin[] = {
 #include "DAC8STEREO.bin.h"
 #elif defined( DAC8PRO )
 #include "DAC8PRO.bin.h"
+#elif defined( DAC8PRODSP )
+#include "DAC8PRODSP.bin.h"
 #else
     0
 #endif
 };
 
 
-const unsigned int interim_firmware_bin[] = {
-#if defined( DAC8STEREO ) || defined( DAC8PRO )
+const unsigned int firmware_121_bin[] = {
+#if defined( DAC8PRO ) || defined( DAC8PRODSP )
 #include "dac8pro_121.bin.h"
+#elif defined(DAC8STEREO)
+#include "dac8stereo_121.bin.h"
 #else
     0
 #endif
@@ -156,7 +160,9 @@ while(1) {
         oldprogress = progress;
         if (progress <= 0) {
             if (dashed) printf("\n");
+#ifdef SAMD_CMD
             printfwstatus(progress);
+#endif
             switch (-progress) {
             case fw_running     :
             case fw_error       :
@@ -180,8 +186,9 @@ int search_dac8_product(char * filename){
     int r = find_usb_device(deviceID, 0, 1);
     if (r < 0)  {
         find_usb_device(0,1,1);
-        fprintf(stderr, "\nCould not find a valid usb device\n\n");
+        fprintf(stderr, "\nCould not find a valid usb device, try uninstalling existing drivers.\n\n");
         waitKey();
+    	libusb_exit(NULL);
         exit(-1); }
 
     char * teststr = strstr(Product, "DAC8");
@@ -193,6 +200,7 @@ int search_dac8_product(char * filename){
         if (deviceID) printf("Device [%d] not found\n",deviceID);
         else printf("No compatible product found...\n");
         if (filename == NULL) find_usb_device(0, 0, 1);
+        libusb_exit(NULL);
         waitKey();
         exit(-1); }
 
@@ -203,7 +211,15 @@ int execute_file(char * filename){
     FILE* inFile = NULL;
 
     printf("\nFirmware upgrade tool for DAC8 products.\n\n");
-
+    int repeat = 0;
+    int BCDprev = 0;
+entry:
+	if (repeat > 3) {
+		printf("Upgrade failed %d times. Please power cycle the device and try once more.\n",repeat);
+        libusb_exit(NULL);
+        waitKey();
+        exit(-1);
+	}
     int r = libusb_init(NULL);
     if (r < 0) {
       fprintf(stderr, "failed to initialise libusb...\n");
@@ -212,6 +228,8 @@ int execute_file(char * filename){
 
     int result = search_dac8_product(filename);
 
+	if (BCDprev == 0) BCDprev = BCDdevice;
+
     int defaultfile = 0;
     if (filename == NULL) {
         defaultfile = 1;
@@ -219,7 +237,7 @@ int execute_file(char * filename){
     }
 
     char * teststr = strstr(filename, Product);
-    if (teststr != filename) {
+    if (teststr == NULL) {
         printf("file %s not compatible with %s\n",filename,Product);
         waitKey();
         exit(-1);
@@ -233,20 +251,25 @@ int execute_file(char * filename){
 			char * test = strstr(Product, "DAC8PRO");
 			#elif defined ( DAC8STEREO )
 			char * test = strstr(Product, "DAC8STEREO");
+            #elif defined ( DAC8PRODSP )
+            char * test = strstr(Product, "DAC8PRO");
 			#else
 			char * test = NULL;
 			#endif
 			if (test != Product) {
 				printf("No embedded %s image file, please specify a binary file in the command line.\n",Product);
+                libusb_exit(NULL);
                 waitKey();
 				exit(-1); }
             filename = NULL;    // will use the inmemory image
         } else {
             if (defaultfile) {
                 printf("no file for upgrade, please specify a binary file in the command line.\n");
+                libusb_exit(NULL);
                 waitKey();
                 exit(-1); }
             fprintf(stderr,"Error: Failed to open file %s or file not found.\n",filename);
+            libusb_exit(NULL);
             waitKey();
             exit(-1);
         }
@@ -256,29 +279,35 @@ int execute_file(char * filename){
         fclose(inFile); }
 
     if (BCDdevice == 0x120) {
-        for (int t=0; t<2;t++) {
+    
             printf("Upgrading USB firmware to intermediate version 1.21, do not disconnect...\n");
             xmos_enterdfu(XMOS_DFU_IF);
             SLEEP(1);
-            result = write_dfu_image(XMOS_DFU_IF, NULL, 1, interim_firmware_bin, sizeof(interim_firmware_bin) );
+            result = write_dfu_image(XMOS_DFU_IF, NULL, 1, firmware_121_bin, sizeof(firmware_121_bin) );
+	        xmos_resetdevice(XMOS_DFU_IF);
             if (result >= 0) {
                 int oldBCD = BCDdevice;
-                xmos_resetdevice(XMOS_DFU_IF);
                 libusb_close(devh);
-				SLEEP(1);
                 printf("Restarting device, waiting usb enumeration...\n");
-                for (int i=1; i<=10; i++) {
-                    SLEEP(1);
+				SLEEP(2);
+                for (int i=1; i<=20; i++) {
                     result = find_usb_device(deviceID, 0, 1);
+                    SLEEP(1);
                     if (result >=0) break; //&& (oldBCD != BCDdevice)) break;
-                    if (result >=0) libusb_close(devh);
                 }
             }
             if (BCDdevice == 0x121) {
-                printf("Preliminary upgrade done successfully.\n");
-                break;
-            } else printf("Retrying upgrade...\n");
-        }
+                printf("Preliminary upgrade to v1.21 done successfully.\n\n");
+                BCDprev = 0x121;
+                libusb_close(devh);
+  				libusb_exit(NULL);
+                goto entry;
+            } else {
+            	repeat ++;
+            	printf("Retrying upgrade...\n\n");
+            	libusb_exit(NULL);
+            	goto entry;
+            }
     }
 
     printf("Upgrading USB firmware, do not disconnect...\n");
@@ -291,27 +320,27 @@ int execute_file(char * filename){
 		strncpy(oldProduct, Product, 64);
         xmos_resetdevice(XMOS_DFU_IF);
         libusb_close(devh);
-		SLEEP(1);
-        printf("Restarting device %s, waiting usb enumeration...\n", oldProduct);
-        for (int i=1; i<=10; i++) {
-            SLEEP(1);
+        printf("Restarting device %s, waiting usb enumeration...\n", Product);
+		SLEEP(2);
+        for (int i=1; i<=20; i++) {
             result = find_usb_device(deviceID, 0, 1);
-			int test = strcmp(Product,oldProduct);
-            if ((result >=0) && ((oldBCD != BCDdevice)||(test |= 0))) break;
-            if (result >=0) libusb_close(devh);
+            SLEEP(1);
+			//int test = strcmp(Product,oldProduct);
+            if (result >=0) break; //&& ((oldBCD != BCDdevice)||(test |= 0))) break;
+            //if (result >=0) libusb_close(devh);
         }
     }
     if (result >= 0) {
-        printf("Device upgraded successfully to v%d.%02X\n",BCDdevice>>8,BCDdevice & 0xFF);
+        printf("Device version v%d.%02X\n",BCDdevice>>8,BCDdevice & 0xFF);
 		
-        show_fp_status();
+        if (BCDdevice >= 0x140) show_fp_status();
 		
-        printf("Done.\n");
+        if (BCDdevice > BCDprev) printf("Success.\n");
         waitKey();
     } else {
-        printf("\nPlease power cycle the device\n");
-        waitKey();
-        exit(-1);
+    	repeat ++;
+        libusb_exit(NULL);
+        goto entry;
     }
 
     libusb_close(devh);

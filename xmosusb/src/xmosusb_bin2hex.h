@@ -11,7 +11,7 @@ int bin2hex(char *file){
     unsigned int block_size = 4096;
     unsigned int remainder = 0;
     unsigned int sum;
-    unsigned char block_data[0x40000];  // max 256ko
+    unsigned char block_data[0x60000];  // max 384ko
 
     inFile = fopen( file, "rb" );
     if( inFile == NULL ) {

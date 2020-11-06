@@ -1,9 +1,0 @@
-# requires sudo apt-get install libusb-1.0-0-dev
-all:
-	g++ -g -o xmosusb ../src/xmosusb.cpp -I../src -I. -L. `pkg-config --libs --cflags libusb-1.0`
-	xmosusb --bin2hex ../dac8/DAC8STEREO.bin
-	g++ -o dac8stereo ../src/xmosusb.cpp -I../src -I. -L. -I../dac8 -DDAC8STEREO `pkg-config --libs --cflags libusb-1.0`
-	xmosusb --bin2hex ../dac8/DAC8PRO.bin
-	g++ -o dac8pro    ../src/xmosusb.cpp -I../src -I. -L. -I../dac8 -DDAC8PRO `pkg-config --libs --cflags libusb-1.0`
-	
-	
