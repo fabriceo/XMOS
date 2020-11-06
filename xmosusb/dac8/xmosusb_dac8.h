@@ -8,8 +8,8 @@ const unsigned int target_firmware_bin[] = {
 #include "DAC8STEREO.bin.h"
 #elif defined( DAC8PRO )
 #include "DAC8PRO.bin.h"
-#elif defined( DAC8PRODSP )
-#include "DAC8PRODSP.bin.h"
+#elif defined( DAC8PRODSPEVAL )
+#include "DAC8PRODSPEVAL.bin.h"
 #else
     0
 #endif
@@ -17,7 +17,7 @@ const unsigned int target_firmware_bin[] = {
 
 
 const unsigned int firmware_121_bin[] = {
-#if defined( DAC8PRO ) || defined( DAC8PRODSP )
+#if defined( DAC8PRO ) || defined( DAC8PRODSPEVAL )
 #include "dac8pro_121.bin.h"
 #elif defined(DAC8STEREO)
 #include "dac8stereo_121.bin.h"
@@ -251,7 +251,7 @@ entry:
 			char * test = strstr(Product, "DAC8PRO");
 			#elif defined ( DAC8STEREO )
 			char * test = strstr(Product, "DAC8STEREO");
-            #elif defined ( DAC8PRODSP )
+            #elif defined ( DAC8PRODSPEVAL )
             char * test = strstr(Product, "DAC8PRO");
 			#else
 			char * test = NULL;
