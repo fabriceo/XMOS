@@ -17,7 +17,6 @@
 *.vcd
 *.xi
 *.i
-*.a
 *.xmt
 *.swp
 .*.swp
