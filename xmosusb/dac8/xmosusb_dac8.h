@@ -185,8 +185,8 @@ int search_dac8_product(char * filename){
     printf("Searching product on the USB bus ...");
     int r = find_usb_device(deviceID, 0, 1);
     if (r < 0)  {
-        find_usb_device(0,1,1);
-        fprintf(stderr, "\nCould not find a valid usb device, try uninstalling existing drivers.\n\n");
+        //find_usb_device(0,1,1);
+        fprintf(stderr, "\nCould not find or access a valid usb device, uninstall any existing drivers.\n\n");
         waitKey();
     	libusb_exit(NULL);
         exit(-1); }

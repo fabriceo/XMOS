@@ -39,23 +39,28 @@
 /* the device's vendor and product id */
 #define XMOS_VID 0x20b1
 
-#define XMOS_XCORE_AUDIO_AUDIO2_PID 0x3066
-#define XMOS_DXIO                   0x2009
-#define XMOS_DAC8_INITIAL           0x2009
 #define XMOS_L1_AUDIO2_PID          0x0002
-#define XMOS_L1_AUDIO1_PID          0x0003
 #define XMOS_L2_AUDIO2_PID          0x0004
+#define XMOS_XS1_U8_Proto 			0x0006
 #define XMOS_SU1_AUDIO2_PID         0x0008
 #define XMOS_U8_MFA_AUDIO2_PID      0x000A
+#define XMOS_XK_AUDIO_216_MC_AB		0x000C
+#define xCORE_Microphone_Array		0x0010
+#define XMOS_USB_Audio				0x0020
+#define XMOS_DXIO                   0x2009
+#define XMOS_DAC8_INITIAL           0x2009
+#define XMOS_XCORE_AUDIO_AUDIO2_PID 0x3066
 
 unsigned short pidList[] = {XMOS_XCORE_AUDIO_AUDIO2_PID, 
 						    XMOS_DXIO,
 						    XMOS_DAC8_INITIAL,
                             XMOS_L1_AUDIO2_PID,
-                            XMOS_L1_AUDIO1_PID,
                             XMOS_L2_AUDIO2_PID,
                             XMOS_SU1_AUDIO2_PID, 
-                            XMOS_U8_MFA_AUDIO2_PID };
+                            XMOS_U8_MFA_AUDIO2_PID,
+							XMOS_USB_Audio,
+							xCORE_Microphone_Array,
+							XMOS_XS1_U8_Proto};
 
 #define DFU_REQUEST_TO_DEV      0x21
 #define DFU_REQUEST_FROM_DEV    0xA1
@@ -291,6 +296,8 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
                 else {
 #if defined(__linux__)
                     printf("\nCommand to be executed with admin rights or sudo\n");
+#elif defined( WIN32 )
+	printf(" => Uninstall Audio Driver first !\n");
 #endif
                 }
                 if (!list) break;  // device selected : leave the loop, device is opened
@@ -556,7 +563,9 @@ int main_only_for_testing_compiler(int argc, char **argv) {
 #else
 int main(int argc, char **argv) {
 #endif
+#ifdef WIN32
 
+#endif
   int r = 1;
   unsigned argi = 1;
 
