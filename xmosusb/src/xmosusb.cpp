@@ -199,6 +199,7 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
                 if (foundDev) printf("\n[%d] > ",currentId);
                 else printf("\n      ");
                 printf("VID %04X, PID %04X, BCD %04X", desc.idVendor, desc.idProduct, desc.bcdDevice); }
+
             if ((devhopen = libusb_open(dev, &devh)) >=0 )  {
 
                 libusb_config_descriptor *config_desc = NULL;
@@ -287,6 +288,11 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
                         if (printmode) printf(" ** NO config descriptor **\n"); }
                     if (devhopen>=0) libusb_close(devh);
                 } // libusb_open
+                else {
+#if defined(__linux__)
+                    printf("\nCommand to be executed with admin rights or sudo\n");
+#endif
+                }
                 if (!list) break;  // device selected : leave the loop, device is opened
             } // if currentId == id
             currentId++;
@@ -386,7 +392,7 @@ int write_dfu_image(unsigned int interface, char *file, int printmode, const uns
   num_blocks = image_size/block_size;
   remainder  = image_size - (num_blocks * block_size);
 
-  printf("Verifying image %dkB = %d x %d + %d\n",(image_size+1023)/1024,num_blocks,block_size,remainder);
+  printf("Verifying image %dkB\n",(image_size+1023)/1024);
 
   dfuBlockCount = 0; 
 

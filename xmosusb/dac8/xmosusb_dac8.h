@@ -287,7 +287,7 @@ entry:
 	        xmos_resetdevice(XMOS_DFU_IF);
             if (result >= 0) {
                 int oldBCD = BCDdevice;
-                libusb_close(devh);
+                if (devhopen>=0) libusb_close(devh);
                 printf("Restarting device, waiting usb enumeration...\n");
 				SLEEP(2);
                 for (int i=1; i<=20; i++) {
@@ -299,7 +299,7 @@ entry:
             if (BCDdevice == 0x121) {
                 printf("Preliminary upgrade to v1.21 done successfully.\n\n");
                 BCDprev = 0x121;
-                libusb_close(devh);
+                if (devhopen>=0) libusb_close(devh);
   				libusb_exit(NULL);
                 goto entry;
             } else {
@@ -319,7 +319,7 @@ entry:
 		char oldProduct[64];
 		strncpy(oldProduct, Product, 64);
         xmos_resetdevice(XMOS_DFU_IF);
-        libusb_close(devh);
+        if (devhopen>=0) libusb_close(devh);
         printf("Restarting device %s, waiting usb enumeration...\n", Product);
 		SLEEP(2);
         for (int i=1; i<=20; i++) {
@@ -343,7 +343,7 @@ entry:
         goto entry;
     }
 
-    libusb_close(devh);
+    if (devhopen>=0) libusb_close(devh);
     libusb_exit(NULL);
     return 0;
 }
