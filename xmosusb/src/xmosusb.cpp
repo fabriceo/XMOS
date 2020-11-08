@@ -261,7 +261,13 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
                             if (inter_desc->bInterfaceClass == 0xFE && // DFU class
                                 inter_desc->bInterfaceSubClass == 0x1)  {
                                XMOS_DFU_IF = j;
-                               if (printmode>1) printf("      (%d)  usb DFU\n",j); }
+                               if (printmode>1) {
+                                   printf("      (%d)  usb DFU",j);
+                                   if (j == 0) printf(" => REBOOT / power-cycle required");
+                                   printf("\n");
+                               }
+
+                            }
 
                             else if (inter_desc->bInterfaceClass == LIBUSB_CLASS_AUDIO &&
                                 inter_desc->bInterfaceSubClass == 0x01)  {
@@ -290,7 +296,7 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
 
                         libusb_free_config_descriptor(config_desc);
                     } else {
-                        if (printmode) printf(" ** NO config descriptor **\n"); }
+                        if (printmode) printf(" ? No access to descriptor\n"); }
                     if (devhopen>=0) libusb_close(devh);
                 } // libusb_open
                 else {
@@ -412,7 +418,7 @@ int write_dfu_image(unsigned int interface, char *file, int printmode, const uns
     if (i==1) printf("Downloading data...\n");
     int numbytes = dfu_download(interface, dfuBlockCount, block_size, data);
     if (numbytes != 64) {
-        fprintf(stderr,"Error: dfudownload step %d returned an error %d.\n",i,numbytes);
+        printf("Error: dfudownload returned an error %d at block %d.\n",numbytes, dfuBlockCount);
        return -1; }
     dfu_getStatus(interface, &dfuState, &timeout, &nextDfuState, &strIndex);
     dfuBlockCount++;

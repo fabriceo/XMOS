@@ -222,7 +222,11 @@ entry:
 	}
     int r = libusb_init(NULL);
     if (r < 0) {
-      fprintf(stderr, "failed to initialise libusb...\n");
+        fprintf(stderr, "failed to initialise libusb...\n");
+#if defined(__linux__)
+        printf("Please install libusb with sudo apt-get install -y libusb-1.0-0-dev\n");
+#endif
+
       waitKey();
       exit(-1); }
 
