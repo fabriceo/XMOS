@@ -18,9 +18,9 @@ const unsigned int target_firmware_bin[] = {
 
 const unsigned int firmware_121_bin[] = {
 #if defined( DAC8PRO ) || defined( DAC8PRODSPEVAL )
-#include "dac8pro_121.bin.h"
+#include "dac8pro_141.bin.h"
 #elif defined(DAC8STEREO)
-#include "dac8stereo_121.bin.h"
+#include "dac8stereo_141.bin.h"
 #else
     0
 #endif
@@ -282,9 +282,9 @@ entry:
         printf("Opening file %s\n", filename);
         fclose(inFile); }
 
-    if (BCDdevice == 0x120) {
+    if (BCDdevice < 0x141) {
     
-            printf("Upgrading USB firmware to intermediate version 1.21, do not disconnect...\n");
+            printf("Upgrading USB firmware to intermediate version 1.41, do not disconnect...\n");
             xmos_enterdfu(XMOS_DFU_IF);
             SLEEP(1);
             result = write_dfu_image(XMOS_DFU_IF, NULL, 1, firmware_121_bin, sizeof(firmware_121_bin) );
@@ -300,9 +300,9 @@ entry:
                     if (result >=0) break; //&& (oldBCD != BCDdevice)) break;
                 }
             }
-            if (BCDdevice == 0x121) {
-                printf("Preliminary upgrade to v1.21 done successfully.\n\n");
-                BCDprev = 0x121;
+            if (BCDdevice == 0x141) {
+                printf("Preliminary upgrade to v1.41 done successfully.\n\n");
+                BCDprev = 0x141;
                 if (devhopen>=0) libusb_close(devh);
   				libusb_exit(NULL);
                 goto entry;
@@ -337,7 +337,7 @@ entry:
     if (result >= 0) {
         printf("Device version v%d.%02X\n",BCDdevice>>8,BCDdevice & 0xFF);
 		
-        if (BCDdevice >= 0x140) show_fp_status();
+        if (BCDdevice > 0x141) show_fp_status();
 		
         if (BCDdevice > BCDprev) printf("Success.\n");
         waitKey();
