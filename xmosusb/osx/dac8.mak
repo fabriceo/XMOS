@@ -9,4 +9,6 @@ all:
 	g++ -o dac8prodspeval ../src/xmosusb.cpp -I../src -I. -I../dac8 libusb-1.0.0-x86_64.dylib -m64 -DDAC8PRODSPEVAL -DBIN2HEX_CMD=0
 	@cp dac8stereo ../dac8/utilities/osx
 	@cp dac8pro    ../dac8/utilities/osx
+	@cp dac8prodspeval ../dac8/utilities/osx
+
 	
