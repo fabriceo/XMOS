@@ -8,6 +8,8 @@ const unsigned int target_firmware_bin[] = {
 #include "DAC8STEREO.bin.h"
 #elif defined( DAC8PRO )
 #include "DAC8PRO.bin.h"
+#elif defined( DAC8PRO32 )
+#include "DAC8PRO32.bin.h"
 #elif defined( DAC8PRODSPEVAL )
 #include "DAC8PRODSPEVAL.bin.h"
 #else
@@ -16,8 +18,8 @@ const unsigned int target_firmware_bin[] = {
 };
 
 
-const unsigned int firmware_121_bin[] = {
-#if defined( DAC8PRO ) || defined( DAC8PRODSPEVAL )
+const unsigned int firmware_141_bin[] = {
+#if defined( DAC8PRO ) || defined( DAC8PRODSPEVAL ) || defined( DAC8PRO32 )
 #include "dac8pro_141.bin.h"
 #elif defined(DAC8STEREO)
 #include "dac8stereo_141.bin.h"
@@ -287,7 +289,7 @@ entry:
             printf("Upgrading USB firmware to intermediate version 1.41, do not disconnect...\n");
             xmos_enterdfu(XMOS_DFU_IF);
             SLEEP(1);
-            result = write_dfu_image(XMOS_DFU_IF, NULL, 1, firmware_121_bin, sizeof(firmware_121_bin) );
+            result = write_dfu_image(XMOS_DFU_IF, NULL, 1, firmware_141_bin, sizeof(firmware_141_bin) );
 	        xmos_resetdevice(XMOS_DFU_IF);
             if (result >= 0) {
                 int oldBCD = BCDdevice;

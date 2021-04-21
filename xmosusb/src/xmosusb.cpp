@@ -16,7 +16,7 @@
 #define DAC8_CMD   1      // this will include commands related to status and dac modes
 #endif
 #ifndef BIN2HEX_CMD
-#define BIN2HEX_CMD   1 // this will include commands related to status and dac modes
+#define BIN2HEX_CMD   1 // this will include commands related to creating hexfile from binary
 #endif
 
 
@@ -630,7 +630,7 @@ int main(int argc, char **argv) {
       }
   }
 // interception for dac8stereo or dac8pro
-#if defined( DAC8STEREO ) || defined( DAC8PRO ) || defined( DAC8PRODSPEVAL )
+#if defined( DAC8STEREO ) || defined( DAC8PRO ) || defined( DAC8PRODSPEVAL ) || defined( DAC8PRO32 )
       if (argc > argi) {
           char * testcmd = strstr( argv[argi], "-" );
           if (testcmd != argv[argi]) {
