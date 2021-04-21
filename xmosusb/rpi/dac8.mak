@@ -12,3 +12,4 @@ all:
 	@cp dac8stereo ../dac8/utilities/rpi
 	@cp dac8pro    ../dac8/utilities/rpi
 	@cp dac8pro32  ../dac8/utilities/rpi
+	@cp dac8prodspeval  ../dac8/utilities/rpi
