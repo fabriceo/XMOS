@@ -12,4 +12,5 @@ all:
 	copy dac8stereo.exe ..\dac8\utilities\windows
 	copy dac8pro.exe    ..\dac8\utilities\windows
 	copy dac8pro32.exe  ..\dac8\utilities\windows
+	copy dac8prodspeval.exe  ..\dac8\utilities\windows
 	
