@@ -255,6 +255,8 @@ entry:
         if (sizeof(target_firmware_bin)>1) {
 			#if defined( DAC8PRO )
 			char * test = strstr(Product, "DAC8PRO");
+            #if defined( DAC8PRO32 )
+            char * test = strstr(Product, "DAC8PRO");
 			#elif defined ( DAC8STEREO )
 			char * test = strstr(Product, "DAC8STEREO");
             #elif defined ( DAC8PRODSPEVAL )
