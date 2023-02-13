@@ -5,13 +5,15 @@
 
 const unsigned int target_firmware_bin[] = {
 #if defined( DAC8STEREO )
-#include "DAC8STEREO.bin.h"
+#include "dac8stereo.bin.h"
 #elif defined( DAC8PRO )
-#include "DAC8PRO.bin.h"
+#include "dac8pro.bin.h"
 #elif defined( DAC8PRO32 )
-#include "DAC8PRO32.bin.h"
+#include "dac8pro32.bin.h"
 #elif defined( DAC8PRODSPEVAL )
-#include "DAC8PRODSPEVAL.bin.h"
+#include "dac8prodspeval.bin.h"
+#elif defined( DACFABRICE )
+#include "dacfabrice.bin.h"
 #else
     0
 #endif
@@ -77,12 +79,12 @@ void getDacStatus(){
     printf("front panel status  = %d ",    progress );
     printfwstatus(progress);
     printf("decimation factor   = %d\n",    data[23] );
-
-    printf("maximum dsp tasks   = %d\n",    (data[24]) );
-    int maxDsp = 100000000/i2sfreq/data[23];
-    if (data[24]) {
-        for (int i=0; i<= data[24]; i++)
-            if (i != data[24])
+    int maxTask = data[24];
+    printf("maximum dsp tasks   = %d\n",    (maxTask) );
+    int maxDsp = 100000000/i2sfreq;
+    if (maxTask) {
+        for (int i=0; i<= maxTask; i++)
+            if (i != maxTask)
                  printf("dsp %d: instructions = %d\n", i+1, (data[25+i+i]+(data[25+i+i+1]<<8)) );
             else {
                 int maxInst = (data[25+i+i]+(data[25+i+i+1]<<8));
@@ -260,6 +262,8 @@ entry:
 			#elif defined ( DAC8STEREO )
 			char * test = strstr(Product, "DAC8STEREO");
             #elif defined ( DAC8PRODSPEVAL )
+            char * test = strstr(Product, "DAC8PRO");
+            #elif defined ( DACFABRICE )
             char * test = strstr(Product, "DAC8PRO");
 			#else
 			char * test = NULL;

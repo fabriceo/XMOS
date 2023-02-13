@@ -31,11 +31,11 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_xk_216_mc/src/core}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_xk_216_mc/src/extensions}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_xk_216_mc/src/extensions/mfi}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio/src/sigmadsp}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio/src/extensions}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio/src/extensions/mfi}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio/src/sigmadsp}&quot;"/>
 								</option>
 								<option id="com.xmos.xc.compiler.option.defined.symbols.1892331058" name="com.xmos.xc.compiler.option.defined.symbols" superClass="com.xmos.xc.compiler.option.defined.symbols" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="__XC__=1"/>
@@ -197,11 +197,11 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_xk_216_mc/src/core}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_xk_216_mc/src/extensions}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_xk_216_mc/src/extensions/mfi}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio/src/sigmadsp}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio/src/extensions}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio/src/extensions/mfi}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio/src/sigmadsp}&quot;"/>
 								</option>
 								<option id="com.xmos.c.compiler.option.defined.symbols.449691801" name="com.xmos.c.compiler.option.defined.symbols" superClass="com.xmos.c.compiler.option.defined.symbols" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="__llvm__=1"/>
@@ -511,11 +511,11 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_xk_216_mc/src/core}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_xk_216_mc/src/extensions}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_xk_216_mc/src/extensions/mfi}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio/src/sigmadsp}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio/src/extensions}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio/src/extensions/mfi}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio/src/sigmadsp}&quot;"/>
 								</option>
 								<option id="com.xmos.cxx.compiler.option.defined.symbols.1024261475" name="com.xmos.cxx.compiler.option.defined.symbols" superClass="com.xmos.cxx.compiler.option.defined.symbols" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="__llvm__=1"/>

@@ -125,7 +125,7 @@ void dspReadHeader(){
     dspHeader_t header;
     unsigned char * p = (unsigned char*)&header;
     libusb_control_transfer(devh, VENDOR_REQUEST_FROM_DEV,
-            VENDOR_READ_DSP_MEM, 0, 0, p, sizeof(dspHeader_t), 0);
+            VENDOR_READ_DSP_MEM, 2, 0, p, sizeof(dspHeader_t), 0);
     printf("total length = %d\n",header.totalLength);
     if (header.totalLength) {
         printf("data size    = %d\n",header.dataSize);
@@ -243,8 +243,9 @@ int dsp_executecmd() {
     if (dspread) {
         vendor_to_dev(VENDOR_AUDIO_STOP, 0, 0);
         data[0] = param1; // no need for VENDOR_OPEN_FLASH nor VENDOR_CLOSE_FLASH
-        vendor_from_dev(VENDOR_READ_DSP_FLASH, param1, 0, data, 1);
-        if (data[0]) printf("Read from flash error num %d\n",data[0]);
+        vendor_from_dev(VENDOR_READ_DSP_FLASH, param1, 0, data, 4);
+        int freq = (int)data[0] | (int)data[1]<<8 | (int)data[2]<<16 | (int)data[3]<<24;
+        if (freq) printf("Read from flash return max frequency = %d\n",freq);
         vendor_to_dev(VENDOR_AUDIO_START, 0, 0);
     }
     else

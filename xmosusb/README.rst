@@ -65,3 +65,20 @@ or
 or
 	xmosusb 000022 -- testvidpid
 	
+* to get a status from dac8
+	xmosusb --dacstatus
+	
+* to program a dac8 xmos firmware wit a binary file generate bys xmos xflash tool:
+	xmosusb --xmosload firmware.bin
+
+*** using DSP capabilities (if available and reported by dacstatus command) ***
+remark : creating a dsp code is donce with the command dspcreate and associated command line values. see below
+* to upload a dsp code in the xmos ram memory
+	xmosusb --dspload file
+* to write a dsp code from xmos ram to flash memory in the slot X (1 to 8).
+	xmosusb --dspwrite X
+* to read a dsp code from flash memory slot X to xmos ram
+	xmosusb --dspread X
+* to read some dsp code in xmos ram by page of 16 words from adresse X (starting at 0)
+	xmosusb --dspreadmem X
+	

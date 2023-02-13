@@ -26,11 +26,11 @@
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include/xc&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include/clang&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio/src/sigmadsp}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio/src/extensions}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio/src/extensions/mfi}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio/src/sigmadsp}&quot;"/>
 								</option>
 								<option id="com.xmos.xc.compiler.option.defined.symbols.237374191" name="com.xmos.xc.compiler.option.defined.symbols" superClass="com.xmos.xc.compiler.option.defined.symbols" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="__XC__=1"/>
@@ -187,11 +187,11 @@
 								<option id="com.xmos.c.compiler.option.include.paths.1999708555" name="com.xmos.c.compiler.option.include.paths" superClass="com.xmos.c.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include/clang&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio/src/sigmadsp}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio/src/extensions}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio/src/extensions/mfi}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio/src/sigmadsp}&quot;"/>
 								</option>
 								<option id="com.xmos.c.compiler.option.defined.symbols.1842866319" name="com.xmos.c.compiler.option.defined.symbols" superClass="com.xmos.c.compiler.option.defined.symbols" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="__llvm__=1"/>
@@ -496,11 +496,11 @@
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include/clang&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include/c++/v1&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio/src/sigmadsp}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio/src/extensions}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio/src/extensions/mfi}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_dxio/src/sigmadsp}&quot;"/>
 								</option>
 								<option id="com.xmos.cxx.compiler.option.defined.symbols.902973135" name="com.xmos.cxx.compiler.option.defined.symbols" superClass="com.xmos.cxx.compiler.option.defined.symbols" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="__llvm__=1"/>
@@ -901,4 +901,5 @@
 		<project id="lib_spi.null.785498349" name="lib_spi"/>
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
+	<storageModule moduleId="refreshScope"/>
 </cproject>

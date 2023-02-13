@@ -1,0 +1,7 @@
+18:17:57 **** Build of configuration 2i2o2xsxxxd for project app_usb_dxio ****
+xmake CONFIG=2i2o2xsxxxd all 
+xmake[1]: *** /Users/Fabrice/OKTO20201009/module_usb_shared: Is a directory.  Stop.
+xmake: *** [check_modules_msg] Error 2
+
+18:17:57 Build Finished (took 644ms)
+

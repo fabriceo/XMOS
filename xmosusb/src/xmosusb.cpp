@@ -37,7 +37,8 @@
 
 
 /* the device's vendor and product id */
-#define XMOS_VID 0x20b1
+//#define XMOS_VID 0x20b1
+#define XMOS_VID 0x2752
 
 #define XMOS_L1_AUDIO2_PID          0x0002
 #define XMOS_L2_AUDIO2_PID          0x0004
@@ -46,7 +47,8 @@
 #define XMOS_U8_MFA_AUDIO2_PID      0x000A
 #define XMOS_XK_AUDIO_216_MC_AB		0x000C
 #define xCORE_Microphone_Array		0x0010
-#define XMOS_USB_Audio				0x0020
+//#define XMOS_USB_Audio				0x0020
+#define XMOS_USB_Audio				0x0049
 #define XMOS_DXIO                   0x2009
 #define XMOS_DAC8_INITIAL           0x2009
 #define XMOS_XCORE_AUDIO_AUDIO2_PID 0x3066
@@ -630,7 +632,7 @@ int main(int argc, char **argv) {
       }
   }
 // interception for dac8stereo or dac8pro
-#if defined( DAC8STEREO ) || defined( DAC8PRO ) || defined( DAC8PRODSPEVAL ) || defined( DAC8PRO32 )
+#if defined( DAC8STEREO ) || defined( DAC8PRO ) || defined( DAC8PRODSPEVAL ) || defined( DAC8PRO32 ) || defined( DACFABRICE )
       if (argc > argi) {
           char * testcmd = strstr( argv[argi], "-" );
           if (testcmd != argv[argi]) {
