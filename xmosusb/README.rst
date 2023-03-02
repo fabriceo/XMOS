@@ -81,4 +81,3 @@ remark : creating a dsp code is donce with the command dspcreate and associated 
 	xmosusb --dspread X
 * to read some dsp code in xmos ram by page of 16 words from adresse X (starting at 0)
 	xmosusb --dspreadmem X
-	
