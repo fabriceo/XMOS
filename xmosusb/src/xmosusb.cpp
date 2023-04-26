@@ -432,9 +432,10 @@ int write_dfu_image(unsigned int interface, char *file, int printmode, const uns
     if (numbytes != 64) {
        		 printf("Error: dfudownload returned an error %d at block %d.\n",numbytes, dfuBlockCount);
        		return -1;  }
+       		/*
 	if (i==0) {
 	       	printf("allowing 10 seconds delay to erase flash memory, be patient !\n");
-       		SLEEP(10); }
+       		SLEEP(10); } */
     dfu_getStatus(interface, &dfuState, &timeout, &nextDfuState, &strIndex);
     /* 
     if (dfuBlockCount) dfu_getStatus(interface, &dfuState, &timeout, &nextDfuState, &strIndex);
