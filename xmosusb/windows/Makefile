@@ -37,7 +37,7 @@ xmosusb.exe:	../src/xmosusb.cpp ../src/xmosusb_samd.h ../src/xmosusb_dsp.h ../sr
 dac8pro.exe: ../dac8/dac8pro.bin.h xmosusb.exe
 	g++ -o dac8pro    ../src/xmosusb.cpp -I../src -I. -I../dac8 -L. -lusb-1.0 -DDAC8PRO -DDSP_CMD=0 -DBIN2HEX_CMD=0
 	@echo dac8pro.exe compiled sucessfully
-	@copy /Y dac8pro.exe    ../dac8/utilities/windows
+	@copy /Y dac8pro.exe    ..\dac8\utilities\windows
 
 dac8pro32.exe: ../dac8/dac8pro32.bin.h xmosusb.exe
 	g++ -o dac8pro32    ../src/xmosusb.cpp -I../src -I. -I../dac8 -L. -lusb-1.0 -DDAC8PRO32 -DDSP_CMD=0 -DBIN2HEX_CMD=0
