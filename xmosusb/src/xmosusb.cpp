@@ -432,8 +432,10 @@ int write_dfu_image(unsigned int interface, char *file, int printmode, const uns
     if (numbytes != 64) {
         printf("Error: dfudownload returned an error %d at block %d.\n",numbytes, dfuBlockCount);
        return -1; }
+    dfu_getStatus(interface, &dfuState, &timeout, &nextDfuState, &strIndex);
+    /* 
     if (dfuBlockCount) dfu_getStatus(interface, &dfuState, &timeout, &nextDfuState, &strIndex);
-    else {
+    else { 
        	int res = 0, z=0;
        	do {
        		z++;
@@ -445,8 +447,8 @@ int write_dfu_image(unsigned int interface, char *file, int printmode, const uns
         			printf("\nError: downloading first block\n");
        				return -1; }
        			}
-       	} while (res < 0);
-       }
+       	} while (res < 0); 
+       } */ 
     dfuBlockCount++;
     if (printmode == 0) {
         if ((dfuBlockCount & 127) == 0) { printf("%dko\r",dfuBlockCount >> 4); fflush(stdout); }
