@@ -37,32 +37,42 @@
 
 
 /* the device's vendor and product id */
-//#define XMOS_VID 0x20b1
-#define XMOS_VID 0x2752
+#define XMOS_VID        0x20B1
+#define THESYCON_VID    0x152A
+#define OKTORESEARCH_VID THESYCON_VID
+#define MINIDSP_VID     0x2752
 
-#define XMOS_L1_AUDIO2_PID          0x0002
-#define XMOS_L2_AUDIO2_PID          0x0004
-#define XMOS_XS1_U8_Proto 			0x0006
-#define XMOS_SU1_AUDIO2_PID         0x0008
-#define XMOS_U8_MFA_AUDIO2_PID      0x000A
-#define XMOS_XK_AUDIO_216_MC_AB		0x000C
-#define xCORE_Microphone_Array		0x0010
-//#define XMOS_USB_Audio				0x0020
-#define XMOS_USB_Audio				0x0049
-#define XMOS_DXIO                   0x2009
-#define XMOS_DAC8_INITIAL           0x2009
-#define XMOS_XCORE_AUDIO_AUDIO2_PID 0x3066
 
-unsigned short pidList[] = {XMOS_XCORE_AUDIO_AUDIO2_PID, 
-						    XMOS_DXIO,
-						    XMOS_DAC8_INITIAL,
-                            XMOS_L1_AUDIO2_PID,
-                            XMOS_L2_AUDIO2_PID,
-                            XMOS_SU1_AUDIO2_PID, 
-                            XMOS_U8_MFA_AUDIO2_PID,
-							XMOS_USB_Audio,
-							xCORE_Microphone_Array,
-							XMOS_XS1_U8_Proto};
+#define XMOS_L1_AUDIO2_PID          0x20b10002
+#define XMOS_L2_AUDIO2_PID          0x20b10004
+#define XMOS_XS1_U8_Proto 			0x20b10006
+#define XMOS_SU1_AUDIO2_PID         0x20b10008
+#define XMOS_U8_MFA_AUDIO2_PID      0x20b1000A
+#define XMOS_XK_AUDIO_216_MC_AB		0x20b1000C
+#define xCORE_Microphone_Array		0x20b10010
+//#define XMOS_USB_Audio		    0x20b10020
+#define XMOS_USB_Audio				0x20b10049
+#define XMOS_DXIO                   0x20b12009
+#define XMOS_XCORE_AUDIO_AUDIO2_PID 0x20b13066
+
+#define OKTORESEARCH_DAC8PRO        0x152A88C4
+#define OKTORESEARCH_DAC8STEREO     0x152A88C5
+
+#define MINIDSP_TEST                0x27520049
+
+unsigned vidpidList[] = {
+        XMOS_XCORE_AUDIO_AUDIO2_PID,
+        XMOS_DXIO,
+        XMOS_L1_AUDIO2_PID,
+        XMOS_L2_AUDIO2_PID,
+        XMOS_SU1_AUDIO2_PID,
+        XMOS_U8_MFA_AUDIO2_PID,
+        XMOS_USB_Audio,
+        xCORE_Microphone_Array,
+        XMOS_XS1_U8_Proto,
+        OKTORESEARCH_DAC8PRO,
+        OKTORESEARCH_DAC8STEREO,
+        MINIDSP_TEST };
 
 #define DFU_REQUEST_TO_DEV      0x21
 #define DFU_REQUEST_FROM_DEV    0xA1
@@ -100,6 +110,7 @@ char * deviceSerial;                        // serial number found in the comman
 
 int foundDevices;
 int devicePid;
+int deviceVid;
 
 // helpers
 unsigned char data[64];                     // global var used to exchange data between host-client
@@ -155,6 +166,7 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
     XMOS_DFU_IF = 0;
     foundDevices = 0;
     devicePid  = 0;
+    deviceVid  = 0;
 
     libusb_get_device_list(NULL, &devs);
     devh = NULL;
@@ -168,16 +180,16 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
         int foundDev = 0;
 
         if (deviceSerial == NULL) {
-            if(desc.idVendor == XMOS_VID) {
-                for(int j = 0; j < sizeof(pidList)/sizeof(pidList[0]); j++) {
-                    if(desc.idProduct == pidList[j] /* && !list */) {
-                        BCDdevice = desc.bcdDevice;
-                        foundDev = 1;
-                        //printf("device identified\n");
-                        break; // for loop
-                    }
+            int vid = desc.idVendor;
+            int pid = desc.idProduct;
+            for(int j = 0; j < sizeof(vidpidList)/sizeof(vidpidList[0]); j++) {
+                if(pid == (vidpidList[j] & 0xFFFF) && (vid == (vidpidList[j]>>16)) ) {
+                    BCDdevice = desc.bcdDevice;
+                    foundDev = 1;
+                    //printf("device identified\n");
+                    break; // for loop
                 }
-            } // id = xmos_vid
+            }
         } else {
             // check if current device correspond to given serial number
             if ((devhopen = libusb_open(dev, &devh)) >= 0)  {
@@ -202,12 +214,8 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
         if ((list || foundDev)) {   // "list" flag will force displaying all devices, not only the one found
 
             if (foundDev) foundDevices++;
-            if (printmode) {
-                if (foundDev) printf("\n[%d] > ",currentId);
-                else printf("\n      ");
-                printf("VID %04X, PID %04X, BCD %04X", desc.idVendor, desc.idProduct, desc.bcdDevice); }
-
             if ((devhopen = libusb_open(dev, &devh)) >=0 )  {
+
 
                 libusb_config_descriptor *config_desc = NULL;
                 libusb_get_active_config_descriptor(dev, &config_desc);
@@ -217,7 +225,10 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
                         result = libusb_get_string_descriptor_ascii(devh, desc.iManufacturer, (unsigned char*)str64, sizeof(str64));
 
                         if (result > 0) {
-                            if (printmode) printf(" : %s", str64);
+                            if (printmode) {
+                                if (foundDev) printf("\n[%d] > ",currentId);
+                                else printf("\n      ");
+                                printf("VID %04X, PID %04X, BCD %04X : %s", desc.idVendor, desc.idProduct, desc.bcdDevice, str64); }
                             if (currentId == id)
                                 result = libusb_get_string_descriptor_ascii(devh, desc.iManufacturer, (unsigned char*)Manufacturer, sizeof(Manufacturer));
                     } }
@@ -248,6 +259,7 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
                 if ((devhopen = libusb_open(dev, &devh)) >= 0)  {
                     founddev  = dev;
                     devicePid = desc.idProduct;
+                    deviceVid = desc.idVendor;
                     BCDdevice = desc.bcdDevice;
 
                     libusb_config_descriptor *config_desc = NULL;
@@ -265,7 +277,7 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
                                XMOS_DFU_IF = j;
                                if (printmode>1) {
                                    printf("      (%d)  usb DFU",j);
-                                   if (j == 0) printf(" => REBOOT / power-cycle required");
+                                   if (j == 0) printf(" => need REBOOT / power-cycling required");
                                    printf("\n");
                                }
 
@@ -585,7 +597,7 @@ int main(int argc, char **argv) {
   unsigned int leavedfu = 0;
   unsigned int modetest = 0;
 
-  if (argc < 2) listdev = 1;
+  if (argc < 2) listdev = 1;    //if no any option then just list devices on the screen
   else {
       if ( (strcmp(argv[1], "?") == 0) || (strcmp(argv[1], "-?") == 0)  || (strcmp(argv[1], "--?") == 0) ) {
 
@@ -622,14 +634,15 @@ int main(int argc, char **argv) {
       // extract deviceID forced by user eventually
       if (strlen(argv[1]) == 1) {
           deviceID = atoi(argv[1]);
-          if (argc > 2) argi=2;
+          if (argc >= 2) argi=2;
       } else {
           if ( (argv[1][0] >= '0') && (argv[1][0] <= '9')) {
               deviceSerial = argv[1];
               printf("Action only for device %s\n",deviceSerial);
-              if (argc > 2) argi=2;
+              if (argc >= 2) argi=2;
           }
       }
+      if (argc == 2) listdev = 1;
   }
 // interception for dac8stereo or dac8pro
 #if defined( DAC8STEREO ) || defined( DAC8PRO ) || defined( DAC8PRODSPEVAL ) || defined( DAC8PRO32 ) || defined( DACFABRICE )
@@ -656,34 +669,34 @@ int main(int argc, char **argv) {
   } else
 
   if(strcmp(argv[argi], "--listdevices") == 0) {
-          listdev = 1; }
-  else
+          listdev = 1;
+  } else
   if(strcmp(argv[argi], "--resetdevice") == 0) {
-          resetdevice = 1; }
-  else
+          resetdevice = 1;
+  } else
   if(strcmp(argv[argi], "--test") == 0) {
-          modetest = 1; }
-  else
+          modetest = 1;
+  } else
 
 
 #if defined( SAMD_CMD ) && ( SAMD_CMD > 0)
-  if (samd_testcmd(argc, argv, argi)) { }
-  else
+  if (samd_testcmd(argc, argv, argi)) {
+  } else
 #endif
 
 
 #if defined( DSP_CMD ) && ( DSP_CMD > 0)
-  if (dsp_testcmd(argc, argv, argi)) { }
-  else
+  if (dsp_testcmd(argc, argv, argi)) {
+  } else
 #endif
 
 #if defined( DAC8_CMD ) && ( DAC8_CMD > 0)
-  if (dac_testcmd(argc, argv, argi)) { }
-  else
+  if (dac_testcmd(argc, argv, argi)) {
+  } else
 #endif
 
   {
-    fprintf(stderr, "Invalid option passed to usb application\n");
+    fprintf(stderr, "Invalid option passed to usb application. Use --? to print valid options\n");
     exit(-1); }
   }
 
@@ -708,18 +721,17 @@ int main(int argc, char **argv) {
    if(resetdevice)  {
       printf("Sending reboot command...\n");
       vendor_to_dev(VENDOR_RESET_DEVICE,0,0);
-      printf("Device restarting, waiting usb re-enumeration...\n");
+      printf("Device restarting, waiting usb re-enumeration (60seconds max)...\n");
       int result;
       printf("#");fflush(stdout);
         SLEEP(2);
-        for (int i=2; i<=20; i++) {
+        for (int i=2; i<=60; i++) {
             printf("#");fflush(stdout);
             if ((result = find_usb_device(deviceID, 0, 1)) >= 0) break;
             SLEEP(1);
         }
-        if (result <0) printf("\nDevice not connected after 10sec...\n");
-    }
-   else
+        if (result <0) printf("\nDevice not identified after 60sec...\n");
+   } else
    if(modetest)  {
       printf("test\n");
       testvendor(0);
@@ -729,6 +741,17 @@ int main(int argc, char **argv) {
 
       if (xmosload) {
           xmos_enterdfu(XMOS_DFU_IF);
+          //check re-enumeration if BCD device >= 1.5
+          if (BCDdevice >= 0x150) {
+              SLEEP(3);
+              int result = find_usb_device(deviceID, 0, 1);
+              if (result >= 0) {
+                  printf("\nDevice rebooted successfully %d.%02X\n",BCDdevice>>8,BCDdevice & 0xFF); }
+              else {
+                  printf("\nDevice not rebooted or not enumerated successfully after 3 seconds...\n");
+                  exit(0);
+              }
+          }
           int result = write_dfu_image(XMOS_DFU_IF, filename, 0, NULL, 0);
           xmos_resetdevice(XMOS_DFU_IF);
           if (result >= 0) {
@@ -736,9 +759,9 @@ int main(int argc, char **argv) {
               char oldProduct[64];
               strncpy(oldProduct,Product,64);
               if (devhopen>=0) libusb_close(devh);
+              printf("Restarting device, waiting usb enumeration (10seconds max)...\n");
               SLEEP(2);
-              printf("Restarting device, waiting usb enumeration...\n");
-              for (int i=1; i<=20; i++) {
+              for (int i=1; i<=10; i++) {
                   result = find_usb_device(deviceID, 0, 1);
                   SLEEP(1);
                   if (result >=0) break;
@@ -746,7 +769,7 @@ int main(int argc, char **argv) {
               }
               if (result >= 0) {
                   printf("\nDevice upgraded successfully to v%d.%02X\n",BCDdevice>>8,BCDdevice & 0xFF); }
-              else printf("\nDevice not connected...\n");
+              else printf("\nDevice not identified after 10sec...\n");
           }
       }
 

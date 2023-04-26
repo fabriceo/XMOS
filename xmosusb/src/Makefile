@@ -1,0 +1,51 @@
+
+OSNAME := $(if $(findstring Windows,$(OS))$(findstring WINDOWS,$(OS)),WINDOWS,$(shell uname -s))
+ifeq ($(OSNAME),WINDOWS)
+	OSCFLAGS = -DWIN32
+	CMDQUOTE="
+	ECHOQUOTE="
+	CMDLPAREN=(
+	CMDRPAREN=)
+	PATHSEP=;
+	CP=copy $(subst /,\,$(1)) > nul 2>&1
+	XCP=xcopy /i $(subst /,\,$(2)/$(1)) $(subst /,\,$(3)/$(1)) > nul 2>&1
+	MV=move /Y $(subst /,\,$(1)) > nul 2>&1
+	RM=cmd /c if exist "$(subst /,\,$(1))" del /Q /F "$(subst /,\,$(1))"
+	RMRF=cmd /c if exist "$(subst /,\,$(1))" RMDIR /S /Q "$(subst /,\,$(1))"
+	NULL=nul
+	CAT=type
+	OS=WINDOWS
+	SHELL=$(windir)\system32\cmd.exe
+	TO_OS=$(subst /,\,$(1))
+	NOP=rem
+else
+	CMDQUOTE='
+	ECHOQUOTE=\"
+	CMDLPAREN=\(
+	CMDRPAREN=\)
+	SHELL=bash
+	PATHSEP=:
+	CP=cp $(1)
+	XCP=cp -r $(2)/$(1) $(3)
+	MV=mv $(1)
+	RM=rm -f '$(strip $1)'
+	RMRF=rm -rf '$(strip $1)'
+	NULL=/dev/null
+	CAT=cat
+	TO_OS=$(1)
+	NOP=echo -n
+  ifeq ($(OSNAME),Darwin)
+	OSNAME = DARWIN
+    OSCFLAGS = -DOSX
+  else
+    ifeq ($(OSNAME),Linux)
+	OSNAME = LINUX
+	OSCFLAGS = -DLINUX -std=gnu99 -fPIC
+	endif
+endif
+endif
+
+.PHONY: show_os
+show_os:
+	@echo OS found : $(OSNAME)
+	

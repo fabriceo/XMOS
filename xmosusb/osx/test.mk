@@ -1,11 +1,10 @@
-all:	xmosusb Makefile
+all:	xmosusb
 	@echo xmosusb uptodate, to generate all dac8 upgrade utilities type : make dac8
 	
-dac8:	xmosusb Makefile dac8pro dac8pro32 dac8stereo dac8prodspeval dacfabrice
+dac8:	xmosusb dac8pro dac8pro32 dac8stereo dac8prodspeval dacfabrice
 	@echo dac8 done
 
 xmosusb:	../src/xmosusb.cpp ../src/xmosusb_samd.h ../src/xmosusb_dsp.h ../src/xmosusb_bin2hex.h ../dac8/xmosusb_dac8.h
-	@echo compiling xmosusb
 	g++ -o xmosusb ../src/xmosusb.cpp -I../src -I. -I../dac8 libusb-1.0.0-x86_64.dylib -m64
 	@echo xmosusb compiled sucessfully
 	

@@ -159,7 +159,7 @@ while(1) {
     libusb_control_transfer(devh, VENDOR_REQUEST_FROM_DEV,
         VENDOR_GET_DEVICE_INFO, 0, 0, data, 64, 0);
 
-    int progress = data[19]+(data[20]<<8)+(data[21]<<16)+(data[22]<<24);
+    int progress = loadInt(19);//data[19]+(data[20]<<8)+(data[21]<<16)+(data[22]<<24);
     if (progress != oldprogress) {
         oldprogress = progress;
         if (progress <= 0) {
@@ -215,6 +215,10 @@ int execute_file(char * filename){
     FILE* inFile = NULL;
 
     printf("\nFirmware upgrade tool for DAC8 products.\n\n");
+    if (deviceVid != 0x20B1) {
+        printf("This tool is nomore compatible with your DAC8. Please use Thesycon DFU Utility!\n");
+        exit(-1);
+    }
     int repeat = 0;
     int BCDprev = 0;
 entry:
@@ -235,6 +239,12 @@ entry:
       exit(-1); }
 
     int result = search_dac8_product(filename);
+
+    if (BCDdevice >= 0x150) {
+        printf("\nThis tool cannot be used to upgrade DAC8 version >= 1.50");
+        printf("\nPlease use the new Thesycon DFU utility made for OKTO Research\n");
+        exit(-1);
+    }
 
 	if (BCDprev == 0) BCDprev = BCDdevice;
 
