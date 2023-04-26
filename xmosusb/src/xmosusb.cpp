@@ -110,7 +110,6 @@ char * deviceSerial;                        // serial number found in the comman
 
 int foundDevices;
 int devicePid;
-int deviceVid;
 
 // helpers
 unsigned char data[64];                     // global var used to exchange data between host-client
@@ -166,7 +165,6 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
     XMOS_DFU_IF = 0;
     foundDevices = 0;
     devicePid  = 0;
-    deviceVid  = 0;
 
     libusb_get_device_list(NULL, &devs);
     devh = NULL;
@@ -229,8 +227,9 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
                                 if (foundDev) printf("\n[%d] > ",currentId);
                                 else printf("\n      ");
                                 printf("VID %04X, PID %04X, BCD %04X : %s", desc.idVendor, desc.idProduct, desc.bcdDevice, str64); }
-                            if (currentId == id)
+                            if (currentId == id){
                                 result = libusb_get_string_descriptor_ascii(devh, desc.iManufacturer, (unsigned char*)Manufacturer, sizeof(Manufacturer));
+                            }
                     } }
                     if (desc.iProduct) {
                         result = libusb_get_string_descriptor_ascii(devh, desc.iProduct, (unsigned char*)str64, sizeof(str64));
@@ -259,7 +258,6 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
                 if ((devhopen = libusb_open(dev, &devh)) >= 0)  {
                     founddev  = dev;
                     devicePid = desc.idProduct;
-                    deviceVid = desc.idVendor;
                     BCDdevice = desc.bcdDevice;
 
                     libusb_config_descriptor *config_desc = NULL;

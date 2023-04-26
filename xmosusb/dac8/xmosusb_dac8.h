@@ -215,10 +215,6 @@ int execute_file(char * filename){
     FILE* inFile = NULL;
 
     printf("\nFirmware upgrade tool for DAC8 products.\n\n");
-    if (deviceVid != 0x20B1) {
-        printf("This tool is nomore compatible with your DAC8. Please use Thesycon DFU Utility!\n");
-        exit(-1);
-    }
     int repeat = 0;
     int BCDprev = 0;
 entry:
