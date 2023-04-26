@@ -356,13 +356,13 @@ int xmos_leavedfu(unsigned int interface) {
 int dfu_getStatus(unsigned int interface, unsigned char *state, unsigned int *timeout,
                   unsigned char *nextState, unsigned char *strIndex) {
   unsigned int data[2];
-  libusb_control_transfer(devh, DFU_REQUEST_TO_DEV, XMOS_DFU_GETSTATUS, 0, interface, (unsigned char *)data, 6, 0);
+  int res = libusb_control_transfer(devh, DFU_REQUEST_TO_DEV, XMOS_DFU_GETSTATUS, 0, interface, (unsigned char *)data, 6, 0);
   
   *state = data[0] & 0xff;
   *timeout = (data[0] >> 8) & 0xffffff;
   *nextState = data[1] & 0xff;
   *strIndex = (data[1] >> 8) & 0xff;
-  return 0;
+  return res;
 }
 
 int dfu_download(unsigned int interface, unsigned int block_num, unsigned int size, unsigned char *data) {
@@ -432,7 +432,21 @@ int write_dfu_image(unsigned int interface, char *file, int printmode, const uns
     if (numbytes != 64) {
         printf("Error: dfudownload returned an error %d at block %d.\n",numbytes, dfuBlockCount);
        return -1; }
-    dfu_getStatus(interface, &dfuState, &timeout, &nextDfuState, &strIndex);
+    if (dfuBlockCount) dfu_getStatus(interface, &dfuState, &timeout, &nextDfuState, &strIndex);
+    else {
+       	int res = 0, z=0;
+       	do {
+       		z++;
+       		res = dfu_getStatus(interface, &dfuState, &timeout, &nextDfuState, &strIndex);
+       		printf("%d dfu_getStatus = %d\n",z,res);
+       		if (res < 0) {
+       			SLEEP(1);
+       			if (z>30) {
+        			printf("\nError: downloading first block\n");
+       				return -1; }
+       			}
+       	} while (res < 0);
+       }
     dfuBlockCount++;
     if (printmode == 0) {
         if ((dfuBlockCount & 127) == 0) { printf("%dko\r",dfuBlockCount >> 4); fflush(stdout); }
