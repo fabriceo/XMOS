@@ -368,7 +368,7 @@ int dfu_getStatus(unsigned int interface, unsigned char *state, unsigned int *ti
 int dfu_download(unsigned int interface, unsigned int block_num, unsigned int size, unsigned char *data) {
   //printf("... Downloading block number %d size %d\r", block_num, size);
     unsigned int numBytes = 0;
-    numBytes = libusb_control_transfer(devh, DFU_REQUEST_TO_DEV, XMOS_DFU_DNLOAD, block_num, interface, data, size, 100000);
+    numBytes = libusb_control_transfer(devh, DFU_REQUEST_TO_DEV, XMOS_DFU_DNLOAD, block_num, interface, data, size, 0);
     return numBytes;
 }
 
@@ -430,8 +430,11 @@ int write_dfu_image(unsigned int interface, char *file, int printmode, const uns
     if (i==1) printf("Downloading data...\n");
     int numbytes = dfu_download(interface, dfuBlockCount, block_size, data);
     if (numbytes != 64) {
-        printf("Error: dfudownload returned an error %d at block %d.\n",numbytes, dfuBlockCount);
-       return -1; }
+    	if (dfuBlockCount) {
+       		 printf("Error: dfudownload returned an error %d at block %d.\n",numbytes, dfuBlockCount);
+       		return -1; }
+       	printf("allowing 30 seconds delay to erase flash memory, be patient !\n");
+       	SLEEP(30); }
     dfu_getStatus(interface, &dfuState, &timeout, &nextDfuState, &strIndex);
     /* 
     if (dfuBlockCount) dfu_getStatus(interface, &dfuState, &timeout, &nextDfuState, &strIndex);
