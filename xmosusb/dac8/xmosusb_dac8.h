@@ -15,7 +15,7 @@ const unsigned int target_firmware_bin[] = {
 #elif defined( DACFABRICE )
 #include "dacfabrice.bin.h"
 #else
-    0
+//#warning "NO FIRMWARE FILE INCLUDED IN TOOL"
 #endif
 };
 
@@ -195,8 +195,9 @@ int search_dac8_product(char * filename){
     	libusb_exit(NULL);
         exit(-1); }
 
-    char * teststr = strstr(Product, "DAC8");
-    if (teststr == Product) {
+    char * teststr  = strstr(Product, "DAC8");
+    char * teststr2 = strstr(Product, "DACSTEREO"); //added 20230429
+    if ((teststr == Product) || (teststr2 == Product)) {
         printf("found %s v%d.%02X\n",Product, BCDdevice>>8,BCDdevice & 0xFF);
         teststr = strstr(Product, "_");
         if (teststr) teststr[0] = 0;
@@ -267,6 +268,7 @@ entry:
             char * test = strstr(Product, "DAC8PRO");
 			#elif defined ( DAC8STEREO )
 			char * test = strstr(Product, "DAC8STEREO");
+			if (test != Product) test = strstr(Product, "DACSTEREO");   //added 20230429
             #elif defined ( DAC8PRODSPEVAL )
             char * test = strstr(Product, "DAC8PRO");
             #elif defined ( DACFABRICE )

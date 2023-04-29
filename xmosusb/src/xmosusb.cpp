@@ -140,6 +140,13 @@ static inline int loadShort(int idx){
     return val;
 }
 
+void remove_spaces(char* s) {
+    char* d = s;
+    do {
+        while (*d == ' ')  ++d;
+    } while ( (*s++ = *d++) );
+}
+
 static char str64[64] = "";
 static char Manufacturer[64] = "";
 static char Product[64] = "";
@@ -237,6 +244,7 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
                             if (printmode) printf("  %s", str64);
                             if (currentId == id)
                                 result = libusb_get_string_descriptor_ascii(devh, desc.iProduct, (unsigned char*)Product, sizeof(Product));
+                                remove_spaces(Product); //added 20230429
                     } }
 
                     if (desc.iSerialNumber) {
