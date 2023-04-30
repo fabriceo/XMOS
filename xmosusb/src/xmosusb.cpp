@@ -377,7 +377,7 @@ int libusb_control_transfer_(libusb_device_handle *dev_handle,
         memcpy(buffer + LIBUSB_CONTROL_SETUP_SIZE, data, wLength);
 
     libusb_fill_control_transfer(transfer, dev_handle, buffer, sync_transfer_cb,
-            &completed, timeout);
+            &completed, (timeout==-1)?5000:timeout);
 
     transfer->flags = LIBUSB_TRANSFER_FREE_BUFFER;
     r = libusb_submit_transfer(transfer);
@@ -386,7 +386,23 @@ int libusb_control_transfer_(libusb_device_handle *dev_handle,
         return r;
     }
 
-    while( libusb_handle_events(NULL) != LIBUSB_SUCCESS) {};
+        printf("libusb_handle_events \n");
+        int res = libusb_handle_events(NULL);
+
+    if (timeout == -1) {
+        printf("sleep5\n");
+        SLEEP(5);
+        printf("libusb_cancel_transfer\n");
+        r = libusb_cancel_transfer(transfer);
+    }
+
+    while( 1 ) {
+        int res = libusb_handle_events(NULL);
+        if (res ==  LIBUSB_SUCCESS) {
+            if (transfer->status != LIBUSB_TRANSFER_TIMED_OUT) break;
+            printf("LIBUSB_TRANSFER_TIMED_OUT\n");break;
+        }
+    }
     //sync_transfer_wait_for_completion(transfer);
 
     if ((bmRequestType & LIBUSB_ENDPOINT_DIR_MASK) == LIBUSB_ENDPOINT_IN)
@@ -398,7 +414,7 @@ int libusb_control_transfer_(libusb_device_handle *dev_handle,
         r = transfer->actual_length;
         break;
     case LIBUSB_TRANSFER_TIMED_OUT:
-        printf("SHITY TIMEOUT");
+        printf("SHITY LIMITED TIMEOUT !!!\n");
         r = LIBUSB_ERROR_TIMEOUT;
         break;
     case LIBUSB_TRANSFER_STALL:
@@ -455,7 +471,7 @@ int dfu_getStatus(unsigned int interface, unsigned char *state, unsigned int *ti
 int dfu_download(unsigned int interface, unsigned int block_num, unsigned int size, unsigned char *data) {
   //printf("... Downloading block number %d size %d\r", block_num, size);
     unsigned int numBytes = 0;
-    numBytes = libusb_control_transfer_(devh, DFU_REQUEST_TO_DEV, XMOS_DFU_DNLOAD, block_num, interface, data, size, 0);
+    numBytes = libusb_control_transfer_(devh, DFU_REQUEST_TO_DEV, XMOS_DFU_DNLOAD, block_num, interface, data, size, (block_num ==0) ? -1 : 5000);
     return numBytes;
 }
 
