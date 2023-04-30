@@ -233,7 +233,7 @@ static void print_device(libusb_device *dev, libusb_device_handle *handle)
 		libusb_close(handle);
 }
 
-#ifdef __linux__
+#if 0//def __linux__
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
