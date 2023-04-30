@@ -385,7 +385,7 @@ int libusb_control_transfer_(libusb_device_handle *dev_handle,
         libusb_free_transfer(transfer);
         return r;
     }
-
+/*
         printf("libusb_handle_events \n");
         int res = libusb_handle_events(NULL);
 
@@ -395,7 +395,7 @@ int libusb_control_transfer_(libusb_device_handle *dev_handle,
         printf("libusb_cancel_transfer\n");
         r = libusb_cancel_transfer(transfer);
     }
-
+*/
     while( 1 ) {
         int res = libusb_handle_events(NULL);
         if (res ==  LIBUSB_SUCCESS) {
