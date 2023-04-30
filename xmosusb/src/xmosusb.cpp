@@ -103,6 +103,7 @@ unsigned vidpidList[] = {
 
 static libusb_device_handle *devh = NULL;   // current usb device found and opened
 int devhopen = -1;
+static libusb_device *founddev = NULL;
 
 unsigned XMOS_DFU_IF  = 0;                  // interface number used by the DFU driver, valid once device is opened
 unsigned int deviceID = 0;                  // device number selected by the user in the command line (usefull when many xmos device found)
@@ -163,8 +164,7 @@ static char waitKey(){
 
 static int find_usb_device(unsigned int id, unsigned int list, unsigned int printmode) // list !=0 means printing device information
 {
-    libusb_device *dev;
-    libusb_device *founddev;
+    libusb_device *dev = NULL;
     libusb_device **devs;
     int currentId = 0;
     char string[256];
@@ -336,6 +336,7 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
 
     if (founddev)  {
         devhopen = libusb_open(founddev, &devh);
+        libusb_claim_interface(devh,XMOS_DFU_IF);
         if (printmode) printf("\n");
     }
 
@@ -343,6 +344,84 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
 
     return devh ? 0 : -1;   // if a device was found then the devh handler is not nul and the device is "opened" and XMOS_DFU_IF contains interface number
 }
+
+
+static void sync_transfer_cb(struct libusb_transfer *transfer) {
+
+    int *completed = (int*)transfer->user_data;
+    *completed = 1;
+}
+
+int libusb_control_transfer_(libusb_device_handle *dev_handle,
+        uint8_t bmRequestType, uint8_t bRequest, uint16_t wValue,
+        uint16_t wIndex, unsigned char *data, uint16_t wLength,
+        unsigned int timeout) {
+
+    struct libusb_transfer *transfer;
+    unsigned char *buffer;
+    int completed = 0;
+    int r;
+
+    transfer = libusb_alloc_transfer(0);
+    if (!transfer)
+        return LIBUSB_ERROR_NO_MEM;
+
+    buffer = (unsigned char *)malloc(LIBUSB_CONTROL_SETUP_SIZE + wLength);
+    if (!buffer) {
+        libusb_free_transfer(transfer);
+        return LIBUSB_ERROR_NO_MEM;
+    }
+
+    libusb_fill_control_setup(buffer, bmRequestType, bRequest, wValue, wIndex, wLength);
+    if ((bmRequestType & LIBUSB_ENDPOINT_DIR_MASK) == LIBUSB_ENDPOINT_OUT)
+        memcpy(buffer + LIBUSB_CONTROL_SETUP_SIZE, data, wLength);
+
+    libusb_fill_control_transfer(transfer, dev_handle, buffer, sync_transfer_cb,
+            &completed, timeout);
+
+    transfer->flags = LIBUSB_TRANSFER_FREE_BUFFER;
+    r = libusb_submit_transfer(transfer);
+    if (r < 0) {
+        libusb_free_transfer(transfer);
+        return r;
+    }
+
+    while( libusb_handle_events(NULL) != LIBUSB_SUCCESS) {};
+    //sync_transfer_wait_for_completion(transfer);
+
+    if ((bmRequestType & LIBUSB_ENDPOINT_DIR_MASK) == LIBUSB_ENDPOINT_IN)
+        memcpy(data, libusb_control_transfer_get_data(transfer),
+                transfer->actual_length);
+
+    switch (transfer->status) {
+    case LIBUSB_TRANSFER_COMPLETED:
+        r = transfer->actual_length;
+        break;
+    case LIBUSB_TRANSFER_TIMED_OUT:
+        printf("SHITY TIMEOUT");
+        r = LIBUSB_ERROR_TIMEOUT;
+        break;
+    case LIBUSB_TRANSFER_STALL:
+        r = LIBUSB_ERROR_PIPE;
+        break;
+    case LIBUSB_TRANSFER_NO_DEVICE:
+        r = LIBUSB_ERROR_NO_DEVICE;
+        break;
+    case LIBUSB_TRANSFER_OVERFLOW:
+        r = LIBUSB_ERROR_OVERFLOW;
+        break;
+    case LIBUSB_TRANSFER_ERROR:
+    case LIBUSB_TRANSFER_CANCELLED:
+        r = LIBUSB_ERROR_IO;
+        break;
+    default:
+        printf("unrecognised status code %d\n",transfer->status);
+        r = LIBUSB_ERROR_OTHER;
+    }
+    libusb_free_transfer(transfer);
+    return r;
+}
+
 
 
 int xmos_resetdevice(unsigned int interface) {
@@ -365,7 +444,7 @@ int dfu_getStatus(unsigned int interface, unsigned char *state, unsigned int *ti
                   unsigned char *nextState, unsigned char *strIndex) {
   unsigned int data[2];
   int res = libusb_control_transfer(devh, DFU_REQUEST_TO_DEV, XMOS_DFU_GETSTATUS, 0, interface, (unsigned char *)data, 6, 0);
-  
+
   *state = data[0] & 0xff;
   *timeout = (data[0] >> 8) & 0xffffff;
   *nextState = data[1] & 0xff;
@@ -376,7 +455,7 @@ int dfu_getStatus(unsigned int interface, unsigned char *state, unsigned int *ti
 int dfu_download(unsigned int interface, unsigned int block_num, unsigned int size, unsigned char *data) {
   //printf("... Downloading block number %d size %d\r", block_num, size);
     unsigned int numBytes = 0;
-    numBytes = libusb_control_transfer(devh, DFU_REQUEST_TO_DEV, XMOS_DFU_DNLOAD, block_num, interface, data, size, 0);
+    numBytes = libusb_control_transfer_(devh, DFU_REQUEST_TO_DEV, XMOS_DFU_DNLOAD, block_num, interface, data, size, 0);
     return numBytes;
 }
 
@@ -438,29 +517,12 @@ int write_dfu_image(unsigned int interface, char *file, int printmode, const uns
     if (i==1) printf("Downloading data...\n");
     int numbytes = dfu_download(interface, dfuBlockCount, block_size, data);
     if (numbytes != 64) {
-       		 printf("Error: dfudownload returned an error %d at block %d.\n",numbytes, dfuBlockCount);
-       		return -1;  }
-       		/*
-	if (i==0) {
-	       	printf("allowing 10 seconds delay to erase flash memory, be patient !\n");
-       		SLEEP(10); } */
-    dfu_getStatus(interface, &dfuState, &timeout, &nextDfuState, &strIndex);
-    /* 
-    if (dfuBlockCount) dfu_getStatus(interface, &dfuState, &timeout, &nextDfuState, &strIndex);
-    else { 
-       	int res = 0, z=0;
-       	do {
-       		z++;
-       		res = dfu_getStatus(interface, &dfuState, &timeout, &nextDfuState, &strIndex);
-       		printf("%d dfu_getStatus = %d\n",z,res);
-       		if (res < 0) {
-       			SLEEP(1);
-       			if (z>30) {
-        			printf("\nError: downloading first block\n");
-       				return -1; }
-       			}
-       	} while (res < 0); 
-       } */ 
+            printf("Error: dfudownload returned an error %d at block %d.\n",numbytes, dfuBlockCount);
+            return -1;  }
+
+    int gs = dfu_getStatus(interface, &dfuState, &timeout, &nextDfuState, &strIndex);
+    if (gs<0) printf("Error dfu_getStatus %d at block %d\n",gs,dfuBlockCount);
+
     dfuBlockCount++;
     if (printmode == 0) {
         if ((dfuBlockCount & 127) == 0) { printf("%dko\r",dfuBlockCount >> 4); fflush(stdout); }

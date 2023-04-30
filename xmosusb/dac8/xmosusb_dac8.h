@@ -268,7 +268,7 @@ entry:
             char * test = strstr(Product, "DAC8PRO");
 			#elif defined ( DAC8STEREO )
 			char * test = strstr(Product, "DAC8STEREO");
-			if (test != Product) test = strstr(Product, "DACSTEREO");   //added 20230429
+			if (test != Product) test = strstr(Product, "DACSTEREO");   //added 20230429 to cope with some products in the field
             #elif defined ( DAC8PRODSPEVAL )
             char * test = strstr(Product, "DAC8PRO");
             #elif defined ( DACFABRICE )
