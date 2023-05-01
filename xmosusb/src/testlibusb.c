@@ -17,9 +17,56 @@
 * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 */
 
+
+#include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
+#ifdef HAVE_SYS_TIME_H
+#include <sys/time.h>
+#endif
+#include <time.h>
 #include <string.h>
+
+#if defined(__APPLE__)
+#define SLEEP(n) system("sleep " #n)
+#elif defined(__linux__)
+#define SLEEP(n) system("sleep " #n)
+#else // aka windows :)
+// REQUIRES MinGW64.
+#include "windows.h"
+#define SLEEP(n) Sleep(1000*n) //windows
+#endif
+
 #include "libusb.h"
+
+static struct timeval tv,tv1,tv2;
+
+static void get_timestamp(struct timeval *tv)
+{
+#if defined(PLATFORM_WINDOWS)
+    static LARGE_INTEGER frequency;
+    LARGE_INTEGER counter;
+
+    if (!frequency.QuadPart)
+        QueryPerformanceFrequency(&frequency);
+
+    QueryPerformanceCounter(&counter);
+    counter.QuadPart *= 1000000;
+    counter.QuadPart /= frequency.QuadPart;
+
+    tv->tv_sec = (long)(counter.QuadPart / 1000000ULL);
+    tv->tv_usec = (long)(counter.QuadPart % 1000000ULL);
+#elif defined(HAVE_CLOCK_GETTIME)
+    struct timespec ts;
+
+    (void)clock_gettime(CLOCK_MONOTONIC, &ts);
+    tv->tv_sec = ts.tv_sec;
+    tv->tv_usec = (int)(ts.tv_nsec / 1000L);
+#else
+    gettimeofday(tv, NULL);
+#endif
+}
+
 
 int verbose = 0;
 
@@ -208,7 +255,8 @@ static void print_device(libusb_device *dev, libusb_device_handle *handle)
 			if (ret > 0)
 				printf("  Serial Number:             %s\n", (char *)string);
 		}
-	}
+	} else
+	    printf("libusb_open(dev, &handle) failed, no handle provided\n");
 
 	if (verbose) {
 		for (i = 0; i < desc.bNumConfigurations; i++) {
@@ -267,6 +315,15 @@ static int test_wrapped_device(const char *device_name)
 }
 #endif
 
+#define DFU_REQUEST_TO_DEV      0x21
+#define XMOS_DFU_RESETINTODFU   0xf2 // very first command to send for using DNLOAD and GET_STATUS
+
+int xmos_enterdfu(libusb_device_handle *devh, unsigned int interface) {
+  int res = libusb_control_transfer(devh, DFU_REQUEST_TO_DEV, XMOS_DFU_RESETINTODFU, 0, interface, NULL, 0, 0);
+  return res;
+}
+
+
 int main(int argc, char *argv[])
 {
 	const char *device_name = NULL;
@@ -306,6 +363,29 @@ int main(int argc, char *argv[])
 		libusb_free_device_list(devs, 1);
 	}
 
+	struct libusb_device_handle *devh = NULL;
+	devh = libusb_open_device_with_vid_pid(NULL, 0x20B1, 0x2009);
+	if (!devh) {
+	    fprintf(stderr, "Error finding USB device 0x20B1, 0x2009\n");
+	    return -1;
+	    }
+	printf("OKTORESEARCH opened\n");
+	get_timestamp(&tv);
+	xmos_enterdfu(devh,3);
+    get_timestamp(&tv1);
+    unsigned long diff_msec;
+    diff_msec = (tv1.tv_sec - tv.tv_sec) * 1000L;
+    diff_msec += (tv1.tv_usec - tv.tv_usec) / 1000L;
+    printf("xmos_enterdfu took %lums\n",diff_msec);
+	SLEEP(10);
+    get_timestamp(&tv2);
+    diff_msec = (tv2.tv_sec - tv.tv_sec) * 1000L;
+    diff_msec += (tv2.tv_usec - tv.tv_usec) / 1000L;
+    printf("SLEEP(10) took %lums\n",diff_msec);
+	if (devh) libusb_close(devh);
+
 	libusb_exit(NULL);
 	return r;
 }
+
+
