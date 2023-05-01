@@ -39,6 +39,16 @@
 
 #include "libusb.h"
 
+static inline void msleep(int msecs)
+{
+#if defined(_WIN32)
+    Sleep(msecs);
+#else
+    const struct timespec ts = { msecs / 1000, (msecs % 1000) * 1000000L };
+    nanosleep(&ts, NULL);
+#endif
+}
+
 static struct timeval tv,tv1,tv2;
 
 static void get_timestamp(struct timeval *tv)
@@ -369,12 +379,16 @@ int main(int argc, char *argv[])
 	    fprintf(stderr, "Error finding USB device 0x20B1, 0x2009\n");
 	    return -1;
 	    }
-    libusb_claim_interface(devh,0);
+    libusb_claim_interface(devh,3);
 	printf("OKTORESEARCH opened\n");
 	get_timestamp(&tv);
-	int res = xmos_enterdfu(devh,0);
+	int res = xmos_enterdfu(devh,3);
     get_timestamp(&tv1);
-	printf("xmos_enterdfu result = %d\n",res);
+    if (res==LIBUSB_ERROR_PIPE) {
+        printf("   Detected stall - resetting pipe...\n");
+        libusb_clear_halt(devh, 0);
+    } else
+	   printf("xmos_enterdfu result = %d\n",res);
     unsigned long diff_msec;
     diff_msec = (tv1.tv_sec - tv.tv_sec) * 1000L;
     diff_msec += (tv1.tv_usec - tv.tv_usec) / 1000L;
