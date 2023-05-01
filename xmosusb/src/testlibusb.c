@@ -369,6 +369,7 @@ int main(int argc, char *argv[])
 	    fprintf(stderr, "Error finding USB device 0x20B1, 0x2009\n");
 	    return -1;
 	    }
+    libusb_claim_interface(devh,3);
 	printf("OKTORESEARCH opened\n");
 	get_timestamp(&tv);
 	int res = xmos_enterdfu(devh,3);
