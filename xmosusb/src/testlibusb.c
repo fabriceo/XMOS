@@ -43,7 +43,7 @@ static struct timeval tv,tv1,tv2;
 
 static void get_timestamp(struct timeval *tv)
 {
-#if defined(PLATFORM_WINDOWS)
+#if defined(_WIN32) || defined(__CYGWIN__)
     static LARGE_INTEGER frequency;
     LARGE_INTEGER counter;
 
