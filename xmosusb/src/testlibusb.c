@@ -371,8 +371,9 @@ int main(int argc, char *argv[])
 	    }
 	printf("OKTORESEARCH opened\n");
 	get_timestamp(&tv);
-	xmos_enterdfu(devh,3);
+	int res = xmos_enterdfu(devh,3);
     get_timestamp(&tv1);
+	printf("xmos_enterdfu result = %d\n");
     unsigned long diff_msec;
     diff_msec = (tv1.tv_sec - tv.tv_sec) * 1000L;
     diff_msec += (tv1.tv_usec - tv.tv_usec) / 1000L;
