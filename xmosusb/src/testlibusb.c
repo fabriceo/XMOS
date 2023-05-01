@@ -336,6 +336,8 @@ int xmos_enterdfu(libusb_device_handle *devh, unsigned int interface) {
 
 int main(int argc, char *argv[])
 {
+
+    const struct libusb_version* version;
 	const char *device_name = NULL;
 	libusb_device **devs;
 	ssize_t cnt;
@@ -353,7 +355,9 @@ int main(int argc, char *argv[])
 			return 1;
 		}
 	}
-
+	version = libusb_get_version();
+    printf("Using libusb v%d.%d.%d.%d\n\n", version->major, version->minor, version->micro, version->nano);
+    //r = libusb_init_context(/*ctx=*/NULL, /*options=*/NULL, /*num_options=*/0);
 	r = libusb_init(NULL);
 	if (r < 0)
 		return r;
