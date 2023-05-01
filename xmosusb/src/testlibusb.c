@@ -379,6 +379,31 @@ int main(int argc, char *argv[])
 	    fprintf(stderr, "Error finding USB device 0x20B1, 0x2009\n");
 	    return -1;
 	    }
+	libusb_set_auto_detach_kernel_driver(devh, 1);
+	    for (int iface = 0; iface < 4; iface++)
+	    {
+	        int ret;
+
+	        printf("\nKernel driver attached for interface %d: ", iface);
+	        ret = libusb_kernel_driver_active(devh, iface);
+	        if (ret == 0)
+	            printf("none\n");
+	        else if (ret == 1)
+	            printf("yes\n");
+	        else if (ret == LIBUSB_ERROR_NOT_SUPPORTED)
+	            printf("(not supported)\n");
+	        else
+	            fprintf(stderr, "\n   Failed (error %d) %s\n", ret,
+	                 libusb_strerror((enum libusb_error) ret));
+
+	        printf("\nClaiming interface %d...\n", iface);
+	        r = libusb_claim_interface(devh, iface);
+	        if (r != LIBUSB_SUCCESS) {
+	            fprintf(stderr, "   Failed (error %d) %s\n", ret,
+	                 libusb_strerror((enum libusb_error) ret));
+	        }
+	    }
+
     libusb_claim_interface(devh,3);
 	printf("OKTORESEARCH opened\n");
 	get_timestamp(&tv);
