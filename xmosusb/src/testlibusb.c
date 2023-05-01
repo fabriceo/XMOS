@@ -369,10 +369,10 @@ int main(int argc, char *argv[])
 	    fprintf(stderr, "Error finding USB device 0x20B1, 0x2009\n");
 	    return -1;
 	    }
-    libusb_claim_interface(devh,3);
+    libusb_claim_interface(devh,0);
 	printf("OKTORESEARCH opened\n");
 	get_timestamp(&tv);
-	int res = xmos_enterdfu(devh,3);
+	int res = xmos_enterdfu(devh,0);
     get_timestamp(&tv1);
 	printf("xmos_enterdfu result = %d\n",res);
     unsigned long diff_msec;
