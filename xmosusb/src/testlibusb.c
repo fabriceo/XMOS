@@ -325,14 +325,6 @@ static int test_wrapped_device(const char *device_name)
 }
 #endif
 
-#define DFU_REQUEST_TO_DEV      0x21
-#define XMOS_DFU_RESETINTODFU   0xf2 // very first command to send for using DNLOAD and GET_STATUS
-
-int xmos_enterdfu(libusb_device_handle *devh, unsigned int interface) {
-  int res = libusb_control_transfer(devh, DFU_REQUEST_TO_DEV, XMOS_DFU_RESETINTODFU, 0, interface, NULL, 0, 0);
-  return res;
-}
-
 
 int main(int argc, char *argv[])
 {
@@ -376,58 +368,6 @@ int main(int argc, char *argv[])
 
 		libusb_free_device_list(devs, 1);
 	}
-
-	struct libusb_device_handle *devh = NULL;
-	devh = libusb_open_device_with_vid_pid(NULL, 0x20B1, 0x2009);
-	if (!devh) {
-	    fprintf(stderr, "Error finding USB device 0x20B1, 0x2009\n");
-	    return -1;
-	    }
-	libusb_set_auto_detach_kernel_driver(devh, 1);
-	    for (int iface = 0; iface < 4; iface++)
-	    {
-	        int ret;
-
-	        printf("\nKernel driver attached for interface %d: ", iface);
-	        ret = libusb_kernel_driver_active(devh, iface);
-	        if (ret == 0)
-	            printf("none\n");
-	        else if (ret == 1)
-	            printf("yes\n");
-	        else if (ret == LIBUSB_ERROR_NOT_SUPPORTED)
-	            printf("(not supported)\n");
-	        else
-	            fprintf(stderr, "\n   Failed (error %d) %s\n", ret,
-	                 libusb_strerror((enum libusb_error) ret));
-
-	        printf("\nClaiming interface %d...\n", iface);
-	        r = libusb_claim_interface(devh, iface);
-	        if (r != LIBUSB_SUCCESS) {
-	            fprintf(stderr, "   Failed (error %d) %s\n", ret,
-	                 libusb_strerror((enum libusb_error) ret));
-	        }
-	    }
-
-    libusb_claim_interface(devh,3);
-	printf("OKTORESEARCH opened\n");
-	get_timestamp(&tv);
-	int res = xmos_enterdfu(devh,3);
-    get_timestamp(&tv1);
-    if (res==LIBUSB_ERROR_PIPE) {
-        printf("   Detected stall - resetting pipe...\n");
-        libusb_clear_halt(devh, 0);
-    } else
-	   printf("xmos_enterdfu result = %d\n",res);
-    unsigned long diff_msec;
-    diff_msec = (tv1.tv_sec - tv.tv_sec) * 1000L;
-    diff_msec += (tv1.tv_usec - tv.tv_usec) / 1000L;
-    printf("xmos_enterdfu took %lums\n",diff_msec);
-	SLEEP(10);
-    get_timestamp(&tv2);
-    diff_msec = (tv2.tv_sec - tv.tv_sec) * 1000L;
-    diff_msec += (tv2.tv_usec - tv.tv_usec) / 1000L;
-    printf("SLEEP(10) took %lums\n",diff_msec);
-	if (devh) libusb_close(devh);
 
 	libusb_exit(NULL);
 	return r;

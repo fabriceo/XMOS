@@ -9,7 +9,7 @@ const unsigned int target_firmware_bin[] = {
 #elif defined( DAC8PRO )
 #include "dac8pro.bin.h"
 #elif defined( DAC8PRO32 )
-#include "dac8pro32.bin.h"
+#error "no more DAC8PRO32"
 #elif defined( DAC8PRODSPEVAL )
 #include "dac8prodspeval.bin.h"
 #elif defined( DACFABRICE )
@@ -21,7 +21,7 @@ const unsigned int target_firmware_bin[] = {
 
 
 const unsigned int firmware_141_bin[] = {
-#if defined( DAC8PRO ) || defined( DAC8PRODSPEVAL ) || defined( DAC8PRO32 )
+#if defined( DAC8PRO ) || defined( DAC8PRODSPEVAL )
 #include "dac8pro_141.bin.h"
 #elif defined(DAC8STEREO)
 #include "dac8stereo_141.bin.h"
@@ -264,8 +264,6 @@ entry:
         if (sizeof(target_firmware_bin)>1) {
 			#if defined( DAC8PRO )
 			char * test = strstr(Product, "DAC8PRO");
-            #elif defined( DAC8PRO32 )
-            char * test = strstr(Product, "DAC8PRO");
 			#elif defined ( DAC8STEREO )
 			char * test = strstr(Product, "DAC8STEREO");
 			if (test != Product) test = strstr(Product, "DACSTEREO");   //added 20230429 to cope with some products in the field

@@ -8,12 +8,12 @@ LIBUSB = -I/usr/local/Cellar/libusb/1.0.26/include/libusb-1.0 -L/usr/local/Cella
 
 xmosusb:	../src/xmosusb.cpp ../src/xmosusb_samd.h ../src/xmosusb_dsp.h ../src/xmosusb_bin2hex.h ../dac8/xmosusb_dac8.h
 	@echo compiling xmosusb
-	g++ -o xmosusb ../src/xmosusb.cpp -I../src -I. -I../dac8 $(LIBUSB)
+	g++ -o xmosusb ../src/xmosusb.cpp -I../src $(LIBUSB)
 	@echo xmosusb compiled sucessfully
 	
 testlibusb:	../src/testlibusb.c
 	@echo compiling testlibusb
-	gcc  -o testlibusb ../src/testlibusb.c -I. $(LIBUSB)
+	gcc  -o testlibusb ../src/testlibusb.c $(LIBUSB)
 	@echo testlibusb compiled sucessfully
 	
 ../dac8/dac8pro.bin.h:	../dac8/dac8pro.bin 
@@ -37,27 +37,22 @@ testlibusb:	../src/testlibusb.c
 	@echo dacfabrice.bin.h generated sucessfully
 
 dac8pro: ../dac8/dac8pro.bin.h xmosusb
-	g++ -o dac8pro    ../src/xmosusb.cpp -I../src -I. -I../dac8 $(LIBUSB) -DDAC8PRO -DDSP_CMD=0 -DBIN2HEX_CMD=0
+	g++ -o dac8pro    ../src/xmosusb.cpp -I../src $(LIBUSB) -DDAC8PRO -DDSP_CMD=0 -DBIN2HEX_CMD=0
 	@echo dac8pro compiled sucessfully
 	@cp dac8pro    ../dac8/utilities/osx
 
-dac8pro32: ../dac8/dac8pro32.bin.h xmosusb
-	g++ -o dac8pro32    ../src/xmosusb.cpp -I../src -I. -I../dac8 $(LIBUSB) -DDAC8PRO32 -DDSP_CMD=0 -DBIN2HEX_CMD=0
-	@echo dac8pro32 compiled sucessfully
-	@cp dac8pro32  ../dac8/utilities/osx
-
 dac8stereo:	../dac8/dac8stereo.bin.h xmosusb
-	g++ -o dac8stereo ../src/xmosusb.cpp -I../src -I. -I../dac8 $(LIBUSB) -DDAC8STEREO -DDSP_CMD=0 -DBIN2HEX_CMD=0
+	g++ -o dac8stereo ../src/xmosusb.cpp -I../src $(LIBUSB) -DDAC8STEREO -DDSP_CMD=0 -DBIN2HEX_CMD=0
 	@echo dac8stereo compiled sucessfully
 	@cp dac8stereo ../dac8/utilities/osx
 
 dac8prodspeval:	../dac8/dac8prodspeval.bin.h xmosusb
-	g++ -o dac8prodspeval ../src/xmosusb.cpp -I../src -I. -I../dac8 $(LIBUSB) -DDAC8PRODSPEVAL -DBIN2HEX_CMD=0
+	g++ -o dac8prodspeval ../src/xmosusb.cpp -I../src $(LIBUSB) -DDAC8PRODSPEVAL -DBIN2HEX_CMD=0
 	@echo dac8prodspeval compiled sucessfully
 	@cp dac8prodspeval ../dac8/utilities/osx
 
 dacfabrice:	../dac8/dacfabrice.bin.h xmosusb
-	g++ -o dacfabrice ../src/xmosusb.cpp -I../src -I. -I../dac8 $(LIBUSB) -DDACFABRICE -DBIN2HEX_CMD=0
+	g++ -o dacfabrice ../src/xmosusb.cpp -I../src $(LIBUSB) -DDACFABRICE -DBIN2HEX_CMD=0
 	@echo dacfabrice compiled sucessfully
 	@cp dacfabrice ../dac8/utilities/osx
 

@@ -4,6 +4,7 @@
 
 #include "libusb.h"
 // document available at http://libusb.sourceforge.net/api-1.0/modules.html
+//requires libusb 1.0.26 library !!
 
 // check compiler option. if none then all activated by default
 #ifndef SAMD_CMD
@@ -30,17 +31,17 @@
 // https://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win32/Personal%20Builds/mingw-builds/installer/
 // select options : architecture x86_64  and   Threads win32
 // then just launch a run-terminal from the windows start menu and mingW project
-// and type mingw32-make
+// and type mingw32-make or gmake
 #include "windows.h"
-#define SLEEP(n) Sleep(1000*n) //windows
+#define SLEEP(n) Sleep(1000*n)
 #endif
 
 
 /* the device's vendor and product id */
-#define XMOS_VID        0x20B1
-#define THESYCON_VID    0x152A
-#define OKTORESEARCH_VID THESYCON_VID
-#define MINIDSP_VID     0x2752
+#define XMOS_VID          0x20B1
+#define THESYCON_VID      0x152A
+#define OKTORESEARCH_VID  THESYCON_VID  //new from firmware V1.50
+#define MINIDSP_VID       0x2752
 
 
 #define XMOS_L1_AUDIO2_PID          0x20b10002
@@ -106,15 +107,20 @@ int devhopen = -1;
 static libusb_device *founddev = NULL;
 
 unsigned XMOS_DFU_IF  = 0;                  // interface number used by the DFU driver, valid once device is opened
-unsigned int deviceID = 0;                  // device number selected by the user in the command line (usefull when many xmos device found)
+unsigned deviceID = 0;                      // device number selected by the user in the command line (usefull when many xmos device found)
 char * deviceSerial;                        // serial number found in the command line typed by the user
-
 int foundDevices;
 int devicePid;
+unsigned BCDdevice = 0;
 
-// helpers
-unsigned char data[64];                     // global var used to exchange data between host-client
 
+unsigned char data[64];                       // global var used to exchange data between usb host-device
+static char str64[64] = "";
+static char Manufacturer[64] = "";
+static char Product[64] = "";
+static char SerialNumber[16] = "";
+
+//helper function to store data non alligned on 32bits chunks
 static inline void storeInt(int idx,int val){
     data[idx] = val ;
     data[idx+1] = val>>8;
@@ -147,13 +153,6 @@ void remove_spaces(char* s) {
         while (*d == ' ')  ++d;
     } while ( (*s++ = *d++) );
 }
-
-static char str64[64] = "";
-static char Manufacturer[64] = "";
-static char Product[64] = "";
-static char SerialNumber[16] = "";
-unsigned BCDdevice = 0;
-
 
 static char waitKey(){
     fprintf(stderr,"Press ENTER to continue...\n");
@@ -321,17 +320,15 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
                 } // libusb_open
                 else {
 #if defined(__linux__)
-                    printf("\nCommand to be executed with admin rights or sudo\n");
+                    printf("\nno results : command should be executed with admin rights or sudo\n");
 #elif defined( WIN32 )
-	printf(" => Uninstall Audio Driver first !\n");
+                    printf("\ncannot open device => uninstall Audio Driver first\n");
 #endif
                 }
                 if (!list) break;  // device selected : leave the loop, device is opened
             } // if currentId == id
             currentId++;
-
         } // foundDev
-
     } // while 1
 
     if (founddev)  {
@@ -344,100 +341,6 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
 
     return devh ? 0 : -1;   // if a device was found then the devh handler is not nul and the device is "opened" and XMOS_DFU_IF contains interface number
 }
-
-
-static void sync_transfer_cb(struct libusb_transfer *transfer) {
-
-    int *completed = (int*)transfer->user_data;
-    *completed = 1;
-}
-
-int libusb_control_transfer_(libusb_device_handle *dev_handle,
-        uint8_t bmRequestType, uint8_t bRequest, uint16_t wValue,
-        uint16_t wIndex, unsigned char *data, uint16_t wLength,
-        unsigned int timeout) {
-
-    struct libusb_transfer *transfer;
-    unsigned char *buffer;
-    int completed = 0;
-    int r;
-
-    transfer = libusb_alloc_transfer(0);
-    if (!transfer)
-        return LIBUSB_ERROR_NO_MEM;
-
-    buffer = (unsigned char *)malloc(LIBUSB_CONTROL_SETUP_SIZE + wLength);
-    if (!buffer) {
-        libusb_free_transfer(transfer);
-        return LIBUSB_ERROR_NO_MEM;
-    }
-
-    libusb_fill_control_setup(buffer, bmRequestType, bRequest, wValue, wIndex, wLength);
-    if ((bmRequestType & LIBUSB_ENDPOINT_DIR_MASK) == LIBUSB_ENDPOINT_OUT)
-        memcpy(buffer + LIBUSB_CONTROL_SETUP_SIZE, data, wLength);
-
-    libusb_fill_control_transfer(transfer, dev_handle, buffer, sync_transfer_cb,
-            &completed, (timeout==-1)?5000:timeout);
-
-    transfer->flags = LIBUSB_TRANSFER_FREE_BUFFER;
-    r = libusb_submit_transfer(transfer);
-    if (r < 0) {
-        libusb_free_transfer(transfer);
-        return r;
-    }
-/*
-        printf("libusb_handle_events \n");
-        int res = libusb_handle_events(NULL);
-
-    if (timeout == -1) {
-        printf("sleep5\n");
-        SLEEP(5);
-        printf("libusb_cancel_transfer\n");
-        r = libusb_cancel_transfer(transfer);
-    }
-*/
-    while( 1 ) {
-        int res = libusb_handle_events(NULL);
-        if (res ==  LIBUSB_SUCCESS) {
-            if (transfer->status != LIBUSB_TRANSFER_TIMED_OUT) break;
-            printf("LIBUSB_TRANSFER_TIMED_OUT\n");break;
-        }
-    }
-    //sync_transfer_wait_for_completion(transfer);
-
-    if ((bmRequestType & LIBUSB_ENDPOINT_DIR_MASK) == LIBUSB_ENDPOINT_IN)
-        memcpy(data, libusb_control_transfer_get_data(transfer),
-                transfer->actual_length);
-
-    switch (transfer->status) {
-    case LIBUSB_TRANSFER_COMPLETED:
-        r = transfer->actual_length;
-        break;
-    case LIBUSB_TRANSFER_TIMED_OUT:
-        printf("SHITY LIMITED TIMEOUT !!!\n");
-        r = LIBUSB_ERROR_TIMEOUT;
-        break;
-    case LIBUSB_TRANSFER_STALL:
-        r = LIBUSB_ERROR_PIPE;
-        break;
-    case LIBUSB_TRANSFER_NO_DEVICE:
-        r = LIBUSB_ERROR_NO_DEVICE;
-        break;
-    case LIBUSB_TRANSFER_OVERFLOW:
-        r = LIBUSB_ERROR_OVERFLOW;
-        break;
-    case LIBUSB_TRANSFER_ERROR:
-    case LIBUSB_TRANSFER_CANCELLED:
-        r = LIBUSB_ERROR_IO;
-        break;
-    default:
-        printf("unrecognised status code %d\n",transfer->status);
-        r = LIBUSB_ERROR_OTHER;
-    }
-    libusb_free_transfer(transfer);
-    return r;
-}
-
 
 
 int xmos_resetdevice(unsigned int interface) {
@@ -529,15 +432,15 @@ int write_dfu_image(unsigned int interface, char *file, int printmode, const uns
     if (file) fread(data, 1, block_size, inFile);
     else
         for (int j=0; j<16; j++) storeInt(j*4,firm[i*16+j]);
-    if (i == 0) printf("Preparing flash memory\n");
+    if (i == 0) printf("Preparing flash memory (up to 10 seconds...)\n");
     if (i==1) printf("Downloading data...\n");
     int numbytes = dfu_download(interface, dfuBlockCount, block_size, data);
     if (numbytes != 64) {
-            printf("Error: dfudownload returned an error %d at block %d.\n",numbytes, dfuBlockCount);
+            printf("Unexpected Error: dfudownload returned an error %d at block %d.\n",numbytes, dfuBlockCount);
             return -1;  }
 
     int gs = dfu_getStatus(interface, &dfuState, &timeout, &nextDfuState, &strIndex);
-    if (gs<0) printf("Error dfu_getStatus %d at block %d\n",gs,dfuBlockCount);
+    if (gs<0) printf("Unexpected Error in dfu_getStatus %d at block %d\n",gs,dfuBlockCount);
 
     dfuBlockCount++;
     if (printmode == 0) {
@@ -662,7 +565,7 @@ enum VendorCommandsDsp {
 
 unsigned int param1   = 0;                  // command line parameter
 
-
+//include the files required depending on comand line options
 #if defined ( SAMD_CMD ) && ( SAMD_CMD > 0 )
 #include "xmosusb_samd.h"
 #endif
@@ -673,7 +576,7 @@ unsigned int param1   = 0;                  // command line parameter
 #include "xmosusb_bin2hex.h"
 #endif
 #if defined ( DAC8_CMD ) && ( DAC8_CMD > 0 )
-#include "xmosusb_dac8.h"
+#include "../dac8/xmosusb_dac8.h"
 #endif
 
 /*********
@@ -687,12 +590,9 @@ int main_only_for_testing_compiler(int argc, char **argv) {
 #else
 int main(int argc, char **argv) {
 #endif
-#ifdef WIN32
 
-#endif
   int r = 1;
   unsigned argi = 1;
-
 
   unsigned int xmosload = 0;
   unsigned int resetdevice = 0;
@@ -746,10 +646,10 @@ int main(int argc, char **argv) {
               if (argc >= 2) argi=2;
           }
       }
-      if (argc == 2) listdev = 1;
+      if (argc == 2) listdev = 1;   //no more options so just force listing devices
   }
-// interception for dac8stereo or dac8pro
-#if defined( DAC8STEREO ) || defined( DAC8PRO ) || defined( DAC8PRODSPEVAL ) || defined( DAC8PRO32 ) || defined( DACFABRICE )
+// special interception only for dac8 executables to force a special binary filename
+#if defined( DAC8STEREO ) || defined( DAC8PRO ) || defined( DAC8PRODSPEVAL ) || defined( DACFABRICE )
       if (argc > argi) {
           char * testcmd = strstr( argv[argi], "-" );
           if (testcmd != argv[argi]) {
@@ -805,7 +705,9 @@ int main(int argc, char **argv) {
   }
 
   // now program is really starting
-
+  const struct libusb_version* version;
+  version = libusb_get_version();
+  printf("remark : this utility is using libusb v%d.%d.%d.%d\n\n", version->major, version->minor, version->micro, version->nano);
   // opening lib usb
   r = libusb_init(NULL);
   if (r < 0) {
@@ -823,7 +725,7 @@ int main(int argc, char **argv) {
 
    printf("\n");
    if(resetdevice)  {
-      printf("Sending reboot command...\n");
+      printf("Sending device reboot command...\n");
       vendor_to_dev(VENDOR_RESET_DEVICE,0,0);
       printf("Device restarting, waiting usb re-enumeration (60seconds max)...\n");
       int result;
@@ -834,10 +736,13 @@ int main(int argc, char **argv) {
             if ((result = find_usb_device(deviceID, 0, 1)) >= 0) break;
             SLEEP(1);
         }
-        if (result <0) printf("\nDevice not identified after 60sec...\n");
+        if (result < 0) {
+            fprintf(stderr, "\nDevice not identified after 60sec...\n");
+            exit(-1);
+        }
    } else
    if(modetest)  {
-      printf("test\n");
+      printf("Sending vendor test command...\n");
       testvendor(0);
       printf("done.\n");
   } else
@@ -857,8 +762,8 @@ int main(int argc, char **argv) {
               }
           }
           int result = write_dfu_image(XMOS_DFU_IF, filename, 0, NULL, 0);
-          xmos_resetdevice(XMOS_DFU_IF);
           if (result >= 0) {
+              xmos_resetdevice(XMOS_DFU_IF);
               int oldBCD = BCDdevice;
               char oldProduct[64];
               strncpy(oldProduct,Product,64);
