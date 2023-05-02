@@ -359,7 +359,7 @@ entry:
                 for (int i=0; i< 40; i++) {
                     printf("#");fflush(stdout);
                     SLEEP(1);   }
-                printf("\nUpgrade process completed. Press Volume know to display new front panel menus.\n");
+                printf("\nUpgrade process completed. Press Volume knob to display new front panel menus.\n");
             }
         }
 #else
