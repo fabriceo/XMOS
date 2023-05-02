@@ -152,7 +152,7 @@ int dac_executecmd() {
 
 
 void show_fp_status(){
-    printf("Monitoring front panel firmware upgrade (40 seconds):\n");
+    printf("Monitoring front panel firmware upgrade (up to 40 seconds):\n");
 static int oldprogress;
 int dashed = 0;
 while(1) {
@@ -342,10 +342,10 @@ entry:
 		strncpy(oldProduct, Product, 64);
         if (devhopen>=0) libusb_close(devh);
         printf("Restarting device %s, waiting usb enumeration...\n", Product);
-		SLEEP(2);
-        for (int i=1; i<=20; i++) {
+		SLEEP(4);
+        for (int i=1; i<=3; i++) {
             result = find_usb_device(deviceID, 0, 1);
-            SLEEP(1);
+            SLEEP(4);
 			//int test = strcmp(Product,oldProduct);
             if ((result >=0) || (BCDdevice>=0x0150)) break; //&& ((oldBCD != BCDdevice)||(test |= 0))) break;
             //if (result >=0) libusb_close(devh);
@@ -353,13 +353,12 @@ entry:
     }
     if ((result >=0) || (BCDdevice>=0x0150)) {
         printf("Device version v%d.%02X\n",BCDdevice>>8,BCDdevice & 0xFF);
-        if (BCDdevice > 0x141)
-#ifdef _WINDOWS_H
+#ifdef WINDOWS
         if (BCDdevice > 0x141) {
             if (BCDdevice < 0x0150) show_fp_status();
             else {
                 printf("please now wait 40 seconds for font-panel firmware upgrade... Do not power off!\n");
-                for (int i=0; i< 45; i++) {
+                for (int i=0; i< 40; i++) {
                     printf("#");fflush(stdout);
                     SLEEP(1);   }
                 printf("\nUpgrade process completed. Press Volume know to display new front panel menus.\n");

@@ -34,6 +34,7 @@
 // and type mingw32-make or gmake
 #include "windows.h"
 #define SLEEP(n) Sleep(1000*n)
+#define WINDOWS 1
 #endif
 
 
