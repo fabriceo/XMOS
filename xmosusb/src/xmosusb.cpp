@@ -34,6 +34,7 @@
 // and type mingw32-make or gmake
 #include "windows.h"
 #define SLEEP(n) Sleep(1000*n)
+#define WINDOWS 1
 #endif
 
 
@@ -320,9 +321,10 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
                 } // libusb_open
                 else {
 #if defined(__linux__)
-                    printf("\nno results : command should be executed with admin rights or sudo\n");
+                    printf("\nCannot open device => execute the command with admin rights or sudo\n");
 #elif defined( WIN32 )
-                    printf("\ncannot open device => uninstall Audio Driver first\n");
+                    if (BCDdevice < 0x0150)
+                        printf("\nCannot open device => uninstall Audio Driver first and install winusb (using Zadig >2.8)\n");
 #endif
                 }
                 if (!list) break;  // device selected : leave the loop, device is opened

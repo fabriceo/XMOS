@@ -4,7 +4,8 @@ all:	testlibusb xmosusb Makefile
 dac8:	xmosusb Makefile dac8pro dac8pro32 dac8stereo dac8prodspeval dacfabrice
 	@echo dac8 done
 
-LIBUSB = -I/usr/local/Cellar/libusb/1.0.26/include/libusb-1.0 -L/usr/local/Cellar/libusb/1.0.26/lib -lusb-1.0 -m64
+#libusb is installed with brew and the statically linked. no need for dylib file or external dependency.
+LIBUSB = -I/usr/local/Cellar/libusb/1.0.26/include/libusb-1.0 /usr/local/Cellar/libusb/1.0.26/lib/libusb-1.0.a -Wl,-framework,IOKit -Wl,-framework,CoreFoundation -Wl,-framework,Security
 
 xmosusb:	../src/xmosusb.cpp ../src/xmosusb_samd.h ../src/xmosusb_dsp.h ../src/xmosusb_bin2hex.h ../dac8/xmosusb_dac8.h
 	@echo compiling xmosusb

@@ -152,7 +152,7 @@ int dac_executecmd() {
 
 
 void show_fp_status(){
-    printf("Monitoring front panel firmware upgrade:\n");
+    printf("Monitoring front panel firmware upgrade (up to 40 seconds):\n");
 static int oldprogress;
 int dashed = 0;
 while(1) {
@@ -188,13 +188,14 @@ int search_dac8_product(char * filename){
 
     printf("Searching product on the USB bus ...");
     int r = find_usb_device(deviceID, 0, 1);
+    if (BCDdevice>=0x0150) {
+        printf("found DAC8 product v%d.%02X\n", BCDdevice>>8,BCDdevice & 0xFF);
+        return 0;}
     if (r < 0)  {
-        //find_usb_device(0,1,1);
-        fprintf(stderr, "\nCould not find or access a valid usb device, uninstall any existing drivers.\n\n");
-        waitKey();
-    	libusb_exit(NULL);
-        exit(-1); }
-
+            fprintf(stderr, "\nCould not find or access a valid DAC8 product, try uninstalling any existing drivers.\n\n");
+            waitKey();
+            libusb_exit(NULL);
+            exit(-1); }
     char * teststr  = strstr(Product, "DAC8");
     char * teststr2 = strstr(Product, "DACSTEREO"); //added 20230429
     if ((teststr == Product) || (teststr2 == Product)) {
@@ -229,7 +230,7 @@ entry:
     if (r < 0) {
         fprintf(stderr, "failed to initialise libusb...\n");
 #if defined(__linux__)
-        printf("Please install libusb with sudo apt-get install -y libusb-1.0-0-dev\n");
+        printf("Consider install libusb with sudo apt-get install -y libusb-1.0-0-dev\n");
 #endif
 
       waitKey();
@@ -302,8 +303,8 @@ entry:
             xmos_enterdfu(XMOS_DFU_IF);
             SLEEP(1);
             result = write_dfu_image(XMOS_DFU_IF, NULL, 1, firmware_141_bin, sizeof(firmware_141_bin) );
-	        xmos_resetdevice(XMOS_DFU_IF);
             if (result >= 0) {
+                xmos_resetdevice(XMOS_DFU_IF);
                 int oldBCD = BCDdevice;
                 if (devhopen>=0) libusb_close(devh);
                 printf("Restarting device, waiting usb enumeration...\n");
@@ -333,26 +334,38 @@ entry:
     SLEEP(1);
     result = write_dfu_image(XMOS_DFU_IF, filename, 1, target_firmware_bin, sizeof(target_firmware_bin) );
     if (result >= 0) {
+        xmos_resetdevice(XMOS_DFU_IF);
         int oldBCD = BCDdevice;
 		char oldProduct[64];
 		strncpy(oldProduct, Product, 64);
-        xmos_resetdevice(XMOS_DFU_IF);
         if (devhopen>=0) libusb_close(devh);
         printf("Restarting device %s, waiting usb enumeration...\n", Product);
-		SLEEP(2);
-        for (int i=1; i<=20; i++) {
+		SLEEP(4);
+        for (int i=1; i<=3; i++) {
             result = find_usb_device(deviceID, 0, 1);
-            SLEEP(1);
+            SLEEP(4);
 			//int test = strcmp(Product,oldProduct);
-            if (result >=0) break; //&& ((oldBCD != BCDdevice)||(test |= 0))) break;
+            if ((result >=0) || (BCDdevice>=0x0150)) break; //&& ((oldBCD != BCDdevice)||(test |= 0))) break;
             //if (result >=0) libusb_close(devh);
         }
     }
-    if (result >= 0) {
+    if ((result >=0) || (BCDdevice>=0x0150)) {
         printf("Device version v%d.%02X\n",BCDdevice>>8,BCDdevice & 0xFF);
-		
+#if defined( WIN32 )
+        if (BCDdevice > 0x141) {
+            if (BCDdevice < 0x0150) show_fp_status();
+            else {
+                printf("please now wait 40 seconds for font-panel firmware upgrade... Do not power off!\n");
+                for (int i=0; i< 40; i++) {
+                    printf("#");fflush(stdout);
+                    SLEEP(1);   }
+                printf("\nUpgrade process completed. Press Volume knob to display new front panel menus.\n");
+            }
+        }
+#else
         if (BCDdevice > 0x141) show_fp_status();
-		
+#endif
+
         if (BCDdevice > BCDprev) printf("Success.\n");
         waitKey();
     } else {
