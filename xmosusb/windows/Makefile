@@ -9,7 +9,7 @@ all:	xmosusb.exe testlibusb.exe Makefile
 dac8:	xmosusb.exe Makefile dac8pro.exe dac8pro32.exe dac8stereo.exe dac8prodspeval.exe dacfabrice.exe
 	@echo all dac8*.exe utilities done
 
-LIBUSB = -lusb-1.0
+LIBUSB = -Imingw64/include/libusb-1.0 -Lmingw64/lib mingw64/lib/libusb-1.0.a
 
 xmosusb.exe:	../src/xmosusb.cpp ../src/xmosusb_samd.h ../src/xmosusb_dsp.h ../src/xmosusb_bin2hex.h ../dac8/xmosusb_dac8.h
 	@echo compiling xmosusb.exe
