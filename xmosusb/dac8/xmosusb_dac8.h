@@ -188,16 +188,14 @@ int search_dac8_product(char * filename){
 
     printf("Searching product on the USB bus ...");
     int r = find_usb_device(deviceID, 0, 1);
+    if (BCDdevice>=0x0150) {
+        printf("found DAC8 product v%d.%02X\n", BCDdevice>>8,BCDdevice & 0xFF);
+        return 0;}
     if (r < 0)  {
-        if ((founddev != 0) && (BCDdevice>=0x0150)) {
-            printf("found DAC8 product v%d.%02X\n", BCDdevice>>8,BCDdevice & 0xFF);
-            return 0;
-        } else {
             fprintf(stderr, "\nCould not find or access a valid DAC8 product, try uninstalling any existing drivers.\n\n");
             waitKey();
             libusb_exit(NULL);
             exit(-1); }
-    }
     char * teststr  = strstr(Product, "DAC8");
     char * teststr2 = strstr(Product, "DACSTEREO"); //added 20230429
     if ((teststr == Product) || (teststr2 == Product)) {
@@ -353,7 +351,7 @@ entry:
     }
     if ((result >=0) || (BCDdevice>=0x0150)) {
         printf("Device version v%d.%02X\n",BCDdevice>>8,BCDdevice & 0xFF);
-#ifdef WINDOWS
+#if defined( WIN32 )
         if (BCDdevice > 0x141) {
             if (BCDdevice < 0x0150) show_fp_status();
             else {
