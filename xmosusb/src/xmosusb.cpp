@@ -438,8 +438,14 @@ int write_dfu_image(unsigned int interface, char *file, int printmode, const uns
     if (i==1) printf("Downloading data...\n");
     int numbytes = dfu_download(interface, dfuBlockCount, block_size, data);
     if (numbytes != 64) {
-            printf("Unexpected Error: dfudownload returned an error %d at block %d.\n",numbytes, dfuBlockCount);
-            return -1;  }
+        printf("Unexpected Error: dfudownload returned an error %d at block %d.\n",numbytes, dfuBlockCount);
+        if( dfuBlockCount == 0 ) {
+            printf("USB Host timeout while device is erasing flash memory (which takes up to 8 seconds...)\n");
+            printf("Your libusb/winusb configuration is NOT compatible\n");
+            printf("The device is NOT corrupted, but requires a gentle power OFF and then power on\n");
+            exit(-1);
+        }
+        return -1;  }
 
     int gs = dfu_getStatus(interface, &dfuState, &timeout, &nextDfuState, &strIndex);
     if (gs<0) printf("Unexpected Error in dfu_getStatus %d at block %d\n",gs,dfuBlockCount);
