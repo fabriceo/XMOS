@@ -1,7 +1,7 @@
 all:	testlibusb xmosusb Makefile
 	@echo done, to generate all dac8 upgrade utilities type : make dac8
 	
-dac8:	xmosusb Makefile dac8pro dac8pro32 dac8stereo dac8prodspeval dacfabrice
+dac8:	xmosusb Makefile dac8pro dac8stereo dac8prodspeval dacfabrice
 	@echo dac8 done
 
 #libusb is installed with brew and the statically linked. no need for dylib file or external dependency.
@@ -20,10 +20,6 @@ testlibusb:	../src/testlibusb.c
 ../dac8/dac8pro.bin.h:	../dac8/dac8pro.bin 
 	./xmosusb --bin2hex ../dac8/dac8pro.bin
 	@echo dac8pro.bin.h generated sucessfully
-	
-../dac8/dac8pro32.bin.h:	../dac8/dac8pro32.bin 
-	./xmosusb --bin2hex ../dac8/dac8pro32.bin
-	@echo dac8pro32.bin.h generated sucessfully
 	
 ../dac8/dac8stereo.bin.h:	../dac8/dac8stereo.bin 
 	./xmosusb --bin2hex ../dac8/dac8stereo.bin
