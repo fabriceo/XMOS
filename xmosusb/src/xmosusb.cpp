@@ -462,8 +462,9 @@ int write_dfu_image(unsigned int interface, char *file, int printmode, const uns
             printf("Your libusb/winusb platform is unfortunately NOT compatible with our firmware.\n");
             printf("The device is NOT corrupted, but requires a gentle power OFF and then power on.\n");
             exit(-1);
-        }
-        return -1;  }
+        } else
+            return -1;
+    }
 
     int gs = dfu_getStatus(interface, &dfuState, &timeout, &nextDfuState, &strIndex);
     if (gs<0) printf("Unexpected Error in dfu_getStatus %d at block %d\n",gs,dfuBlockCount);
