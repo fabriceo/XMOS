@@ -394,7 +394,7 @@ int dfu_getStatus(unsigned int interface, unsigned char *state, unsigned int *ti
 int dfu_download(unsigned int interface, unsigned int block_num, unsigned int size, unsigned char *data) {
   //printf("... Downloading block number %d size %d\r", block_num, size);
     unsigned int numBytes = 0;
-    numBytes = libusb_control_transfer(devh, DFU_REQUEST_TO_DEV, XMOS_DFU_DNLOAD, block_num, interface, data, size, 1000);
+    numBytes = libusb_control_transfer(devh, DFU_REQUEST_TO_DEV, XMOS_DFU_DNLOAD, block_num, interface, data, size, 10000);
     return numBytes;
 }
 
@@ -616,7 +616,7 @@ int main_only_for_testing_compiler(int argc, char **argv) {
 #else
 int main(int argc, char **argv) {
 #endif
-    putenv( "LIBUSB_DEBUG=4" );
+    //putenv( "LIBUSB_DEBUG=4" );
   int r = 1;
   unsigned argi = 1;
 
