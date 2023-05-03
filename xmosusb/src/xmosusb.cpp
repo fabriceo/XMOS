@@ -35,6 +35,7 @@
 #include "windows.h"
 #define SLEEP(n) Sleep(1000*n)
 #define WINDOWS 1
+#warning "compilation for windows target platform."
 #endif
 
 
@@ -393,7 +394,7 @@ int dfu_getStatus(unsigned int interface, unsigned char *state, unsigned int *ti
 int dfu_download(unsigned int interface, unsigned int block_num, unsigned int size, unsigned char *data) {
   //printf("... Downloading block number %d size %d\r", block_num, size);
     unsigned int numBytes = 0;
-    numBytes = libusb_control_transfer(devh, DFU_REQUEST_TO_DEV, XMOS_DFU_DNLOAD, block_num, interface, data, size, 10000);
+    numBytes = libusb_control_transfer(devh, DFU_REQUEST_TO_DEV, XMOS_DFU_DNLOAD, block_num, interface, data, size, 1000);
     return numBytes;
 }
 
@@ -457,9 +458,9 @@ int write_dfu_image(unsigned int interface, char *file, int printmode, const uns
     if (numbytes != 64) {
         printf("Unexpected Error: dfudownload returned an error %d at block %d.\n",numbytes, dfuBlockCount);
         if( dfuBlockCount == 0 ) {
-            printf("USB Host timeout while device is erasing flash memory (which takes up to 8 seconds...)\n");
-            printf("Your libusb/winusb configuration is NOT compatible\n");
-            printf("The device is NOT corrupted, but requires a gentle power OFF and then power on\n");
+            printf("USB Host timeout after 5 seconds while device is erasing flash memory needing 8 seconds\n");
+            printf("Your libusb/winusb platform is unfortunately NOT compatible with our firmware.\n");
+            printf("The device is NOT corrupted, but requires a gentle power OFF and then power on.\n");
             exit(-1);
         }
         return -1;  }
@@ -615,7 +616,7 @@ int main_only_for_testing_compiler(int argc, char **argv) {
 #else
 int main(int argc, char **argv) {
 #endif
-
+    putenv( "LIBUSB_DEBUG=4" );
   int r = 1;
   unsigned argi = 1;
 
