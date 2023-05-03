@@ -335,7 +335,22 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
 
     if (founddev)  {
         devhopen = libusb_open(founddev, &devh);
-        libusb_claim_interface(devh,XMOS_DFU_IF);
+
+        libusb_set_auto_detach_kernel_driver(devh, 1);
+        printf("\nKernel driver attached for interface %d: ", XMOS_DFU_IF);
+        int ret = libusb_kernel_driver_active(devh, XMOS_DFU_IF);
+        if (ret == 0)
+            printf("none\n");
+        else if (ret == 1)
+            printf("yes\n");
+        else if (ret == LIBUSB_ERROR_NOT_SUPPORTED)
+            printf("(not supported on this platform)\n");
+        else
+            printf("\n   Failed (error %d) %s\n", ret, libusb_strerror((enum libusb_error) ret));
+        printf("\nClaiming interface %d...\n", XMOS_DFU_IF);
+        ret = libusb_claim_interface(devh,XMOS_DFU_IF);
+        if (ret != LIBUSB_SUCCESS) {
+            printf("   Failed (error %d) %s\n", ret, libusb_strerror((enum libusb_error) ret)); }
         if (printmode) printf("\n");
     }
 
