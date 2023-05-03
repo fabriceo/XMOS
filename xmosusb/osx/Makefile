@@ -51,6 +51,6 @@ dac8prodspeval:	../dac8/dac8prodspeval.bin.h xmosusb
 dacfabrice:	../dac8/dacfabrice.bin.h xmosusb
 	g++ -o dacfabrice ../src/xmosusb.cpp -I../src $(LIBUSB) -DDACFABRICE -DBIN2HEX_CMD=0
 	@echo dacfabrice compiled sucessfully
-	@cp dacfabrice ../dac8/utilities/osx
+
 
 
