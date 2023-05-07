@@ -35,7 +35,6 @@
 #include "windows.h"
 #define SLEEP(n) Sleep(1000*n)
 #define WINDOWS 1
-#warning "compilation for windows target platform."
 #endif
 
 
