@@ -1,13 +1,13 @@
 all:	testlibusb xmosusb Makefile
 	@echo done, to generate all dac8 upgrade utilities type : make dac8
 	
-dac8:	xmosusb Makefile dac8pro dac8stereo dac8prodspeval dacfabrice
+dac8:	xmosusb Makefile dac8pro dac8stereo dac8prodspeval
 	@echo dac8 done
 
 #libusb is installed with brew and the statically linked. no need for dylib file or external dependency.
 LIBUSB = -I/usr/local/Cellar/libusb/1.0.26/include/libusb-1.0 /usr/local/Cellar/libusb/1.0.26/lib/libusb-1.0.a -Wl,-framework,IOKit -Wl,-framework,CoreFoundation -Wl,-framework,Security
 
-xmosusb:	../src/xmosusb.cpp ../src/xmosusb_samd.h ../src/xmosusb_dsp.h ../src/xmosusb_bin2hex.h ../dac8/xmosusb_dac8.h
+xmosusb:	../src/xmosusb.cpp ../src/xmosusb_samd.h ../src/xmosusb_dsp.h ../src/xmosusb_bin2hex.h ../src/xmosusb_dac8.h
 	@echo compiling xmosusb
 	g++ -o xmosusb ../src/xmosusb.cpp -I../src $(LIBUSB)
 	@echo xmosusb compiled sucessfully
@@ -28,10 +28,6 @@ testlibusb:	../src/testlibusb.c
 ../dac8/dac8prodspeval.bin.h:	../dac8/dac8prodspeval.bin 
 	./xmosusb --bin2hex ../dac8/dac8prodspeval.bin
 	@echo dac8prodspeval.bin.h generated sucessfully
-	
-../dac8/dacfabrice.bin.h:	../dac8/dacfabrice.bin 
-	./xmosusb --bin2hex ../dac8/dacfabrice.bin
-	@echo dacfabrice.bin.h generated sucessfully
 
 dac8pro: ../dac8/dac8pro.bin.h xmosusb
 	g++ -o dac8pro    ../src/xmosusb.cpp -I../src $(LIBUSB) -DDAC8PRO -DDSP_CMD=0 -DBIN2HEX_CMD=0
@@ -47,10 +43,6 @@ dac8prodspeval:	../dac8/dac8prodspeval.bin.h xmosusb
 	g++ -o dac8prodspeval ../src/xmosusb.cpp -I../src $(LIBUSB) -DDAC8PRODSPEVAL -DBIN2HEX_CMD=0
 	@echo dac8prodspeval compiled sucessfully
 	@cp dac8prodspeval ../dac8/utilities/osx
-
-dacfabrice:	../dac8/dacfabrice.bin.h xmosusb
-	g++ -o dacfabrice ../src/xmosusb.cpp -I../src $(LIBUSB) -DDACFABRICE -DBIN2HEX_CMD=0
-	@echo dacfabrice compiled sucessfully
 
 
 

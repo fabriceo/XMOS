@@ -4,20 +4,20 @@
 
 #include "libusb.h"
 // document available at http://libusb.sourceforge.net/api-1.0/modules.html
-//requires libusb 1.0.26 library !!
+
 
 // check compiler option. if none then all activated by default
 #ifndef SAMD_CMD
-#define SAMD_CMD  1      // thiw will include all commands related to SAMD
+#define SAMD_CMD  1         // thiw will include all commands related to SAMD
 #endif
 #ifndef DSP_CMD
-#define DSP_CMD   1      // this will include all dsp and flash related feature
+#define DSP_CMD   1         // this will include all dsp and flash related feature
 #endif
 #ifndef DAC8_CMD
-#define DAC8_CMD   1      // this will include commands related to status and dac modes
+#define DAC8_CMD   1        // this will include commands related to status and dac modes
 #endif
 #ifndef BIN2HEX_CMD
-#define BIN2HEX_CMD   1 // this will include commands related to creating hexfile from binary
+#define BIN2HEX_CMD   1     // this will include commands related to creating hexfile from binary
 #endif
 
 
@@ -40,11 +40,10 @@
 
 
 /* the device's vendor and product id */
-#define XMOS_VID          0x20B1
-#define THESYCON_VID      0x152A
-#define OKTORESEARCH_VID  THESYCON_VID  //new from firmware V1.50
-#define MINIDSP_VID       0x2752
-
+#define XMOS_VID                    0x20B1
+#define THESYCON_VID                0x152A
+#define OKTORESEARCH_VID            THESYCON_VID  //new from firmware V1.50
+#define MINIDSP_VID                 0x2752
 
 #define XMOS_L1_AUDIO2_PID          0x20b10002
 #define XMOS_L2_AUDIO2_PID          0x20b10004
@@ -105,16 +104,12 @@ unsigned vidpidList[] = {
 
 
 static libusb_device_handle *devh = NULL;   // current usb device found and opened
-int devhopen = -1;
-static libusb_device *founddev = NULL;
+int devhopen = -1;                          //track status of the device open or not, used also in dac8.h
 
 unsigned XMOS_DFU_IF  = 0;                  // interface number used by the DFU driver, valid once device is opened
 unsigned deviceID = 0;                      // device number selected by the user in the command line (usefull when many xmos device found)
-char * deviceSerial;                        // serial number found in the command line typed by the user
-int foundDevices;
-int devicePid;
+char * deviceSerial = NULL;                 // serial number found in the command line typed by the user
 unsigned BCDdevice = 0;
-
 
 unsigned char data[64];                       // global var used to exchange data between usb host-device
 static char str64[64] = "";
@@ -167,16 +162,16 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
 {
     libusb_device *dev = NULL;
     libusb_device **devs;
+    libusb_device *founddev = NULL;
+
     int currentId = 0;
     char string[256];
     int result;
     XMOS_DFU_IF = 0;
-    foundDevices = 0;
-    devicePid  = 0;
+    int devicePid = 0;
 
     libusb_get_device_list(NULL, &devs);
     devh = NULL;
-    founddev = NULL;
     int i = 0;
     while ((dev = devs[i++]) != NULL) 
     {
@@ -219,7 +214,6 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
 
         if ((list || foundDev)) {   // "list" flag will force displaying all devices, not only the one found
 
-            if (foundDev) foundDevices++;
             if ((devhopen = libusb_open(dev, &devh)) >=0 )  {
 
 
@@ -322,10 +316,10 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
                 } // libusb_open
                 else {
 #if defined(__linux__)
-                    printf("\nCannot open device => execute the command with admin rights or sudo\n");
+                    printf("\nCannot open device => execute the command with proper admin rights or sudo\n");
 #elif defined( WIN32 )
                     if (BCDdevice < 0x0150)
-                        printf("\nCannot open device => uninstall Audio Driver first and install winusb (using Zadig >2.8)\n");
+                        printf("\nCannot open device => uninstall any driver first and install winusb (using Zadig 2.8)\n");
 #endif
                 }
                 if (!list) break;  // device selected : leave the loop, device is opened
@@ -394,7 +388,7 @@ int dfu_getStatus(unsigned int interface, unsigned char *state, unsigned int *ti
 int dfu_download(unsigned int interface, unsigned int block_num, unsigned int size, unsigned char *data) {
   //printf("... Downloading block number %d size %d\r", block_num, size);
     unsigned int numBytes = 0;
-    numBytes = libusb_control_transfer(devh, DFU_REQUEST_TO_DEV, XMOS_DFU_DNLOAD, block_num, interface, data, size, 10000);
+    numBytes = libusb_control_transfer(devh, DFU_REQUEST_TO_DEV, XMOS_DFU_DNLOAD, block_num, interface, data, size, 0);
     return numBytes;
 }
 
@@ -456,11 +450,16 @@ int write_dfu_image(unsigned int interface, char *file, int printmode, const uns
     if (i==1) printf("Downloading data...\n");
     int numbytes = dfu_download(interface, dfuBlockCount, block_size, data);
     if (numbytes != 64) {
-        printf("Unexpected Error: dfudownload returned an error %d at block %d.\n",numbytes, dfuBlockCount);
+        printf("Unexpected Error: dfudownload command returned an error %d at block %d.\n",numbytes, dfuBlockCount);
         if( dfuBlockCount == 0 ) {
-            printf("USB Host timeout after 5 seconds while device is erasing flash memory needing 8 seconds\n");
-            printf("Your libusb/winusb platform is unfortunately NOT compatible with our firmware.\n");
-            printf("The device is NOT corrupted, but requires a gentle power OFF and then power on.\n");
+            printf("USB Host timeout after 5 seconds while device is erasing flash memory needing 8 seconds.\n");
+            printf("The DAC8 is now awaiting an incomplete USB transaction and requires a gentle power OFF and then power ON.\n");
+            printf("Your platform configuration does not seem yet to be compatible with this upgrade process.\n");
+#ifdef WINDOWS
+            printf("Please consider unistalling any device driver and reinstalling winusb (with reboot)\n");
+#else
+            printf("Please consider installing another version for libusb or testing on other USB ports/hubs\n");
+#endif
             exit(-1);
         } else
             return -1;
@@ -603,7 +602,7 @@ unsigned int param1   = 0;                  // command line parameter
 #include "xmosusb_bin2hex.h"
 #endif
 #if defined ( DAC8_CMD ) && ( DAC8_CMD > 0 )
-#include "../dac8/xmosusb_dac8.h"
+#include "xmosusb_dac8.h"
 #endif
 
 /*********
@@ -666,17 +665,18 @@ int main(int argc, char **argv) {
       if (strlen(argv[1]) == 1) {
           deviceID = atoi(argv[1]);
           if (argc >= 2) argi=2;
+          if (argc == 2) listdev = 1;   //no more options so just force listing devices
       } else {
           if ( (argv[1][0] >= '0') && (argv[1][0] <= '9')) {
               deviceSerial = argv[1];
               printf("Action only for device %s\n",deviceSerial);
               if (argc >= 2) argi=2;
+              if (argc == 2) listdev = 1;   //no more options so just force listing devices
           }
       }
-      if (argc == 2) listdev = 1;   //no more options so just force listing devices
   }
 // special interception only for dac8 executables to force a special binary filename
-#if defined( DAC8STEREO ) || defined( DAC8PRO ) || defined( DAC8PRODSPEVAL ) || defined( DACFABRICE )
+#if defined( DAC8STEREO ) || defined( DAC8PRO ) || defined( DAC8PRODSPEVAL )
       if (argc > argi) {
           char * testcmd = strstr( argv[argi], "-" );
           if (testcmd != argv[argi]) {
@@ -723,6 +723,7 @@ int main(int argc, char **argv) {
 
 #if defined( DAC8_CMD ) && ( DAC8_CMD > 0)
   if (dac_testcmd(argc, argv, argi)) {
+      printf("dac_testcmd identified\n");
   } else
 #endif
 
@@ -734,7 +735,7 @@ int main(int argc, char **argv) {
   // now program is really starting
   const struct libusb_version* version;
   version = libusb_get_version();
-  printf("remark : this utility is using libusb v%d.%d.%d.%d\n\n", version->major, version->minor, version->micro, version->nano);
+  printf("This utility is using libusb v%d.%d.%d.%d\n\n", version->major, version->minor, version->micro, version->nano);
   // opening lib usb
   r = libusb_init(NULL);
   if (r < 0) {
@@ -742,7 +743,6 @@ int main(int argc, char **argv) {
     exit(-1); }
 
   // searching for usb device
-
   r = find_usb_device(deviceID, listdev, 2); // if listdev = 1, this will print all devices found
   if (r < 0)  {
       if(!listdev) {
@@ -820,7 +820,6 @@ int main(int argc, char **argv) {
 #if defined( DAC8_CMD ) && ( DAC8_CMD > 0)
       else if (dac_executecmd()) { }
 #endif
-
   } // if (listdev == 0)
   libusb_exit(NULL);
   exit(1);

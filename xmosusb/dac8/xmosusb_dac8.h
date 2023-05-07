@@ -5,15 +5,13 @@
 
 const unsigned int target_firmware_bin[] = {
 #if defined( DAC8STEREO )
-#include "dac8stereo.bin.h"
+#include "../dac8/dac8stereo.bin.h"
 #elif defined( DAC8PRO )
-#include "dac8pro.bin.h"
+#include "../dac8/dac8pro.bin.h"
 #elif defined( DAC8PRO32 )
 #error "no more DAC8PRO32"
 #elif defined( DAC8PRODSPEVAL )
-#include "dac8prodspeval.bin.h"
-#elif defined( DACFABRICE )
-#include "dacfabrice.bin.h"
+#include "../dac8/dac8prodspeval.bin.h"
 #else
 //#warning "NO FIRMWARE FILE INCLUDED IN TOOL"
 #endif
@@ -22,9 +20,9 @@ const unsigned int target_firmware_bin[] = {
 
 const unsigned int firmware_141_bin[] = {
 #if defined( DAC8PRO ) || defined( DAC8PRODSPEVAL )
-#include "dac8pro_141.bin.h"
+#include "../dac8/dac8pro_141.bin.h"
 #elif defined(DAC8STEREO)
-#include "dac8stereo_141.bin.h"
+#include "../dac8/dac8stereo_141.bin.h"
 #else
     0
 #endif
@@ -45,6 +43,7 @@ static const int tableFreq[8] = { 44100, 48000, 88200, 96000, 176400,192000, 352
 
 // show some key information about the dac
 void getDacStatus(){
+    printf("printing dac status:\n");
     unsigned char data[64];
     libusb_control_transfer(devh, VENDOR_REQUEST_FROM_DEV,
             VENDOR_GET_DEVICE_INFO, 0, 0, data, 64, 0);
@@ -70,7 +69,7 @@ void getDacStatus(){
         printf("front panel volume  = muted (%ddB)\n", -vol );
     else
         printf("front panel volume  = %ddB\n", vol );
-    printf("xmos BCD version    = 0x%4X\n", (data[9]+(data[10]<<8)) );
+    printf("xmos BCD version    = %d.%2X\n", data[10],data[9]);
     printf("usb vendor ID       = 0x%4X\n", (data[11]+(data[12]<<8)) );
     printf("usb product ID      = 0x%4X\n", (data[13]+(data[14]<<8)) );
     int maxFreq = (data[15]+(data[16]<<8)+(data[17]<<16)+(data[18]<<24));
@@ -186,13 +185,14 @@ while(1) {
 
 int search_dac8_product(char * filename){
 
-    printf("Searching product on the USB bus ...");
+    printf("Searching OKTO Research product on the USB ports ...");
     int r = find_usb_device(deviceID, 0, 1);
     if (BCDdevice>=0x0150) {
         printf("found DAC8 product v%d.%02X\n", BCDdevice>>8,BCDdevice & 0xFF);
         return 0;}
     if (r < 0)  {
-            fprintf(stderr, "\nCould not find or access a valid DAC8 product, try uninstalling any existing drivers.\n\n");
+            fprintf(stderr, "\nCould not find or access a valid DAC8 product\n"
+                            "please try uninstalling any existing drivers.\n\n");
             waitKey();
             libusb_exit(NULL);
             exit(-1); }
@@ -201,7 +201,7 @@ int search_dac8_product(char * filename){
     if ((teststr == Product) || (teststr2 == Product)) {
         printf("found %s v%d.%02X\n",Product, BCDdevice>>8,BCDdevice & 0xFF);
         teststr = strstr(Product, "_");
-        if (teststr) teststr[0] = 0;
+        if (teststr) teststr[0] = 0;    //delete characters above _
     } else  {
         if (deviceID) printf("Device [%d] not found\n",deviceID);
         else printf("No compatible product found...\n");
@@ -219,6 +219,9 @@ int execute_file(char * filename){
     printf("\nFirmware upgrade tool for DAC8 products.\n\n");
     int repeat = 0;
     int BCDprev = 0;
+    int defaultfile = 0;
+
+
 entry:
 	if (repeat > 3) {
 		printf("Upgrade failed %d times. Please power cycle the device and try once more.\n",repeat);
@@ -228,9 +231,9 @@ entry:
 	}
     int r = libusb_init(NULL);
     if (r < 0) {
-        fprintf(stderr, "failed to initialise libusb...\n");
+        fprintf(stderr, "Failed to initialise libusb...\n");
 #if defined(__linux__)
-        printf("Consider install libusb with sudo apt-get install -y libusb-1.0-0-dev\n");
+        printf("Consider install libusb with sudo apt install libusb ,or libusb-1.0, or libusb-1.0-0-dev ...\n");
 #endif
 
       waitKey();
@@ -240,23 +243,25 @@ entry:
 
     if (BCDdevice >= 0x150) {
         printf("\nThis tool cannot be used to upgrade DAC8 version >= 1.50");
-        printf("\nPlease use the new Thesycon DFU utility made for OKTO Research\n");
+        printf("\nPlease use the new Thesycon DFU utility made for OKTO Research\n\n");
+        libusb_exit(NULL);
         exit(-1);
     }
 
-	if (BCDprev == 0) BCDprev = BCDdevice;
+    if (repeat == 0) {
 
-    int defaultfile = 0;
-    if (filename == NULL) {
-        defaultfile = 1;
-        filename = strcat(Product,".bin");
-    }
+        BCDprev = BCDdevice;
 
-    char * teststr = strstr(filename, Product);
-    if (teststr == NULL) {
-        printf("file %s not compatible with %s\n",filename,Product);
-        waitKey();
-        exit(-1);
+        if (filename == NULL) {
+            defaultfile = 1;
+            filename = strcat(Product,".bin");
+        }
+
+        char * teststr = strstr(filename, Product);
+        if (teststr == NULL) {
+            printf("file %s not compatible with %s\n",filename,Product);
+            waitKey();
+            exit(-1); }
     }
 
     inFile = fopen( filename, "rb" );
@@ -270,8 +275,6 @@ entry:
 			if (test != Product) test = strstr(Product, "DACSTEREO");   //added 20230429 to cope with some products in the field
             #elif defined ( DAC8PRODSPEVAL )
             char * test = strstr(Product, "DAC8PRO");
-            #elif defined ( DACFABRICE )
-            char * test = strstr(Product, "DAC8PRO");
 			#else
 			char * test = NULL;
 			#endif
@@ -283,7 +286,7 @@ entry:
             filename = NULL;    // will use the inmemory image
         } else {
             if (defaultfile) {
-                printf("no file for upgrade, please specify a binary file in the command line.\n");
+                printf("No file for upgrade, please specify a binary file in the command line.\n");
                 libusb_exit(NULL);
                 waitKey();
                 exit(-1); }
@@ -308,10 +311,10 @@ entry:
                 int oldBCD = BCDdevice;
                 if (devhopen>=0) libusb_close(devh);
                 printf("Restarting device, waiting usb enumeration...\n");
-				SLEEP(2);
-                for (int i=1; i<=20; i++) {
+				SLEEP(4);
+                for (int i=1; i<=3; i++) {
                     result = find_usb_device(deviceID, 0, 1);
-                    SLEEP(1);
+                    SLEEP(2);
                     if (result >=0) break; //&& (oldBCD != BCDdevice)) break;
                 }
             }
@@ -343,7 +346,7 @@ entry:
 		SLEEP(4);
         for (int i=1; i<=3; i++) {
             result = find_usb_device(deviceID, 0, 1);
-            SLEEP(4);
+            SLEEP(2);
 			//int test = strcmp(Product,oldProduct);
             if ((result >=0) || (BCDdevice>=0x0150)) break; //&& ((oldBCD != BCDdevice)||(test |= 0))) break;
             //if (result >=0) libusb_close(devh);

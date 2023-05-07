@@ -1,14 +1,14 @@
 # requires sudo apt-get install libusb-1.0-0-dev
 
 all:	xmosusb testlibusb Makefile dac8
-	@echo xmosusb and testlibusb uptodate, to generate all dac8 upgrade utilities type : make dac8
+	@echo xmosusb and testlibusb and dac8 uptodate
 	
 dac8:	xmosusb Makefile dac8pro dac8stereo dac8prodspeval
 	@echo dac8 done
 
 LIBUSB = `pkg-config --libs --cflags libusb-1.0`
 
-xmosusb:	../src/xmosusb.cpp ../src/xmosusb_samd.h ../src/xmosusb_dsp.h ../src/xmosusb_bin2hex.h ../dac8/xmosusb_dac8.h
+xmosusb:	../src/xmosusb.cpp ../src/xmosusb_samd.h ../src/xmosusb_dsp.h ../src/xmosusb_bin2hex.h ../src/xmosusb_dac8.h
 	@echo compiling xmosusb
 	g++ -o xmosusb ../src/xmosusb.cpp -I../src $(LIBUSB)
 	@echo xmosusb compiled sucessfully
