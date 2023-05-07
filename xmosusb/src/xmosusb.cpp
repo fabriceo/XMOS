@@ -722,7 +722,6 @@ int main(int argc, char **argv) {
 
 #if defined( DAC8_CMD ) && ( DAC8_CMD > 0)
   if (dac_testcmd(argc, argv, argi)) {
-      printf("dac_testcmd identified\n");
   } else
 #endif
 
@@ -734,7 +733,7 @@ int main(int argc, char **argv) {
   // now program is really starting
   const struct libusb_version* version;
   version = libusb_get_version();
-  printf("This utility is using libusb v%d.%d.%d.%d\n\n", version->major, version->minor, version->micro, version->nano);
+  printf("\nThis utility is using libusb v%d.%d.%d.%d\n\n", version->major, version->minor, version->micro, version->nano);
   // opening lib usb
   r = libusb_init(NULL);
   if (r < 0) {
@@ -775,35 +774,27 @@ int main(int argc, char **argv) {
   if (listdev == 0) {
 
       if (xmosload) {
-          xmos_enterdfu(XMOS_DFU_IF);
-          //check re-enumeration if BCD device >= 1.5
+
           if (BCDdevice >= 0x150) {
-              SLEEP(3);
-              int result = find_usb_device(deviceID, 0, 1);
-              if (result >= 0) {
-                  printf("\nDevice rebooted successfully %d.%02X\n",BCDdevice>>8,BCDdevice & 0xFF); }
-              else {
-                  printf("\nDevice not rebooted or not enumerated successfully after 3 seconds...\n");
-                  exit(0);
-              }
+              printf("BCD >= 150 : use Thesycon DFU utility\n");
+              exit(-1);
           }
+          xmos_enterdfu(XMOS_DFU_IF);
+
           int result = write_dfu_image(XMOS_DFU_IF, filename, 0, NULL, 0);
           if (result >= 0) {
-              xmos_resetdevice(XMOS_DFU_IF);
               int oldBCD = BCDdevice;
-              char oldProduct[64];
-              strncpy(oldProduct,Product,64);
+              xmos_resetdevice(XMOS_DFU_IF);
               if (devhopen>=0) libusb_close(devh);
               printf("Restarting device, waiting usb enumeration (10seconds max)...\n");
               SLEEP(2);
-              for (int i=1; i<=10; i++) {
+              for (int i=1; i<=5; i++) {
                   result = find_usb_device(deviceID, 0, 1);
-                  SLEEP(1);
+                  SLEEP(2);
                   if (result >=0) break;
-                  //if (result >=0) if (devhopen>=0) libusb_close(devh);
               }
               if (result >= 0) {
-                  printf("\nDevice upgraded successfully to v%d.%02X\n",BCDdevice>>8,BCDdevice & 0xFF); }
+                   printf("\nDevice upgraded successfully to v%d.%02X\n",BCDdevice>>8,BCDdevice & 0xFF); }
               else printf("\nDevice not identified after 10sec...\n");
           }
       }
