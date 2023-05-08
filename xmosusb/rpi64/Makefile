@@ -31,17 +31,17 @@ testlibusb:	../src/testlibusb.c Makefile
 	@echo dac8prodspeval.bin.h generated sucessfully
 	
 dac8pro: ../dac8/dac8pro.bin.h xmosusb
-	g++ -o dac8pro    ../src/xmosusb.cpp -I../src $(LIBUSB) -DDAC8PRO -DDSP_CMD=0 -DBIN2HEX_CMD=0
+	g++ -o dac8pro    ../src/xmosusb.cpp -I../src $(LIBUSB) -DDAC8PRO -DDSP_CMD=0
 	@echo dac8pro compiled sucessfully
 	@cp dac8pro    ../dac8/utilities/rpi64
 
 dac8stereo:	../dac8/dac8stereo.bin.h xmosusb
-	g++ -o dac8stereo ../src/xmosusb.cpp -I../src $(LIBUSB) -DDAC8STEREO -DDSP_CMD=0 -DBIN2HEX_CMD=0
+	g++ -o dac8stereo ../src/xmosusb.cpp -I../src $(LIBUSB) -DDAC8STEREO -DDSP_CMD=0
 	@echo dac8stereo compiled sucessfully
 	@cp dac8stereo ../dac8/utilities/rpi64
 
 dac8prodspeval:	../dac8/dac8prodspeval.bin.h xmosusb
-	g++ -o dac8prodspeval ../src/xmosusb.cpp -I../src $(LIBUSB) -DDAC8PRODSPEVAL -DBIN2HEX_CMD=0
+	g++ -o dac8prodspeval ../src/xmosusb.cpp -I../src $(LIBUSB) -DDAC8PRODSPEVAL
 	@echo dac8prodspeval compiled sucessfully
 	@cp dac8prodspeval ../dac8/utilities/rpi64
 

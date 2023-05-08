@@ -33,17 +33,17 @@ testlibusb.exe:	../src/testlibusb.c
 	@echo dac8prodspeval.bin.h generated sucessfully
 
 dac8pro.exe: ../dac8/dac8pro.bin.h xmosusb.exe
-	g++ -o dac8pro    ../src/xmosusb.cpp -I../src $(LIBUSB) -DDAC8PRO -DDSP_CMD=0 -DBIN2HEX_CMD=0
+	g++ -o dac8pro    ../src/xmosusb.cpp -I../src $(LIBUSB) -DDAC8PRO -DDSP_CMD=0
 	@echo dac8pro.exe compiled sucessfully
 	@copy /Y dac8pro.exe    ..\dac8\utilities\windows
 
 dac8stereo.exe:	../dac8/dac8stereo.bin.h xmosusb.exe
-	g++ -o dac8stereo ../src/xmosusb.cpp -I../src $(LIBUSB) -DDAC8STEREO -DDSP_CMD=0 -DBIN2HEX_CMD=0
+	g++ -o dac8stereo ../src/xmosusb.cpp -I../src $(LIBUSB) -DDAC8STEREO -DDSP_CMD=0
 	@echo dac8stereo.exe compiled sucessfully
 	@copy /Y dac8stereo.exe ..\dac8\utilities\windows
 
 dac8prodspeval.exe:	../dac8/dac8prodspeval.bin.h xmosusb.exe
-	g++ -o dac8prodspeval ../src/xmosusb.cpp -I../src $(LIBUSB) -DDAC8PRODSPEVAL -DBIN2HEX_CMD=0
+	g++ -o dac8prodspeval ../src/xmosusb.cpp -I../src $(LIBUSB) -DDAC8PRODSPEVAL
 	@echo dac8prodspeval.exe compiled sucessfully
 	@copy /Y dac8prodspeval.exe ..\dac8\utilities\windows
 
