@@ -50,7 +50,7 @@
 #define XMOS_SU1_AUDIO2_PID         0x20b10008
 #define XMOS_U8_MFA_AUDIO2_PID      0x20b1000A
 #define XMOS_XK_AUDIO_216_MC_AB		0x20b1000C
-#define xCORE_Microphone_Array		0x20b10010
+#define xCORE_Microphone_Array		0x20b10010 // normally 0010
 //#define XMOS_USB_Audio		    0x20b10020
 #define XMOS_USB_Audio				0x20b10049
 #define XMOS_DXIO                   0x20b12009
@@ -186,9 +186,12 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
                 if(pid == (vidpidList[j] & 0xFFFF) && (vid == (vidpidList[j]>>16)) ) {
                     BCDdevice = desc.bcdDevice;
                     foundDev = 1;
-                    //printf("device identified\n");
                     break; // for loop
                 }
+            }
+			if( ( ( pid & 0xF000 )== 0x2000) && (vid == 0x20B1) ) {
+                    BCDdevice = desc.bcdDevice;
+                    foundDev = 1;
             }
         } else {
             // check if current device correspond to given serial number
