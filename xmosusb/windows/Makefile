@@ -1,7 +1,7 @@
 #windows version
 #use mingw32-make or gmake
 	
-all:	xmosusb.exe testlibusb.exe Makefile dac8
+all:	xmosusb.exe xmostusb.exe testlibusb.exe Makefile dac8
 	@echo xmosusb and testlibusb and dac8 uptodate
 	
 dac8:	xmosusb.exe Makefile dac8pro.exe dac8stereo.exe dac8prodspeval.exe
@@ -14,6 +14,11 @@ xmosusb.exe:	../src/xmosusb.cpp ../src/xmosusb_samd.h ../src/xmosusb_dsp.h ../sr
 	@echo compiling xmosusb.exe
 	g++ -o xmosusb ../src/xmosusb.cpp -I../src $(LIBUSB)
 	@echo xmosusb.exe compiled sucessfully
+
+xmostusb.exe:	../src/xmosusb.cpp ../src/xmosusb_samd.h ../src/xmosusb_dsp.h ../src/xmosusb_bin2hex.h ../src/xmosusb_dac8.h
+	@echo compiling xmostusb.exe
+	g++ -o xmostusb ../src/xmosusb.cpp -I../src -I../../.../TUSBAUDIO -DTUSBAUDIOAPI $(LIBUSB)
+	@echo xmostusb.exe compiled sucessfully
 
 testlibusb.exe:	../src/testlibusb.c
 	@echo compiling testlibusb.exe
