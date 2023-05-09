@@ -2,10 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "libusb.h"
-// document available at http://libusb.sourceforge.net/api-1.0/modules.html
-
-
 // check compiler option. if none then all activated by default
 #ifndef SAMD_CMD
 #define SAMD_CMD  1         // thiw will include all commands related to SAMD
@@ -37,6 +33,34 @@
 #define WINDOWS 1
 #endif
 
+#ifdef TUSBAUDIOAPI
+// exclude rarely-used stuff from Windows headers
+#define WIN32_LEAN_AND_MEAN
+#include <tchar.h>
+#include "libwn.h"
+#include "tusbaudioapi.h"
+#include "TUsbAudioApiDll.h"
+TUsbAudioApiDll gDrvApi;
+static TUsbAudioHandle devh;
+#else
+#include "libusb.h"
+// document available at http://libusb.sourceforge.net/api-1.0/modules.html
+static libusb_device_handle *devh = NULL;
+#endif
+
+#if defined(TUSBAUDIOAPI)
+static int libusbcontroltransfer(libusb_device_handle *dev_handle,
+	uint8_t request_type, uint8_t bRequest, uint16_t wValue, uint16_t wIndex,
+	unsigned char *data, uint16_t wLength, unsigned int timeout){
+	if (request_type & 0x80)
+		return gDrvApi.TUSBAUDIO_AudioControlRequestGet(devh, unitID, bRequest, cs, cn, data, wLength, NULL, timeout);
+	else
+		return gDrvApi.TUSBAUDIO_AudioControlRequestSet(devh, unitID, bRequest, cs, cn, data, wLength, NULL, timeout);
+//unsigned char bRequest, unsigned char cs, unsigned char cn, unsigned short unitID, unsigned short wLength, unsigned char *data)
+}
+#else
+#define libusbcontroltransfer libusb_control_transfer
+#endif
 
 /* the device's vendor and product id */
 #define XMOS_VID                    0x20B1
@@ -102,7 +126,6 @@ unsigned vidpidList[] = {
 #define XMOS_DFU_GETSTATUS     0xf8 //same as original DFU_GETSTATUS
 
 
-static libusb_device_handle *devh = NULL;   // current usb device found and opened
 int devhopen = -1;                          //track status of the device open or not, used also in dac8.h
 
 unsigned XMOS_DFU_IF  = 0;                  // interface number used by the DFU driver, valid once device is opened
@@ -607,6 +630,30 @@ unsigned int param1   = 0;                  // command line parameter
 #include "xmosusb_dac8.h"
 #endif
 
+
+int libusbinit(){
+#if defined(TUSBAUDIOAPI)
+    gDrvApi.LoadByGUID(_T(TUSBAUDIO_MYGUID));
+    TUsbAudioStatus st = gDrvApi.TUSBAUDIO_EnumerateDevices();
+	if (TSTATUS_SUCCESS != st) return -1;
+#else
+	const struct libusb_version* version;
+	version = libusb_get_version();
+	printf("\nThis utility is using libusb v%d.%d.%d.%d\n\n", version->major, version->minor, version->micro, version->nano);
+    if (libusb_init(NULL) < 0) return -1;  
+#endif
+	return 0;
+}
+
+void libusbexit(){
+#if defined(TUSBAUDIOAPI)
+	if (devh != 0) gDrvApi.TUSBAUDIO_CloseDevice(devh);
+#else
+	libusb_close(devh);
+    libusb_exit(NULL);
+#endif
+}
+
 /*********
  *
  * main program entry point to analyse commands and launch routines
@@ -734,11 +781,8 @@ int main(int argc, char **argv) {
   }
 
   // now program is really starting
-  const struct libusb_version* version;
-  version = libusb_get_version();
-  printf("\nThis utility is using libusb v%d.%d.%d.%d\n\n", version->major, version->minor, version->micro, version->nano);
   // opening lib usb
-  r = libusb_init(NULL);
+  r = libusbinit();
   if (r < 0) {
     fprintf(stderr, "ERROR : Failed to initialise libusb...\n");
     exit(-1); }
