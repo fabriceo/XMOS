@@ -1,1 +1,21 @@
-a simple cooperative scheduler based on setjmp/longjmp
+
+
+can be used in mutiple threads, each thread having its own task list and context.
+
+simply invoke the macro XCSchedulerCreateTask(mytask1) for allocating each task at the begining of a thread 
+and then call yield() as much as possible, like in a default select case
+
+it is possible to pass an unsigned parameter to the created task by simply using the other macro: 
+XCSchedulerCreateTaskParam( mytask1, value). This is usefull to create multiple instance of a single code, 
+where "value" can be used to adjust code behaviour depending on the creator request. 
+this "value" is simply passed as an optional parameter (register r0) to the task function.
+a second optional parameter is also passed in r1, pointing on the task name (char *)
+
+remark:
+-for each xcore thread, a task list is maintained, where the task are appened in the creation order
+-for each task created, the stack is allocated once with malloc().
+-if a task ends (reach its end of code) it will be removed from the list, stack is deallocated, and control is passed to next task in the list 
+-yield() instruction imediately stores the current task context and jump to the next one in the list.
+ if none, it returns to the yield() of the thread (considered as the maintask).
+-it is possible to "yield" for a certain amount of time in cpu cycle with yieldDelay(x)
+ this can be compared to a "delay" function where the spare time is given to any other task in the list.

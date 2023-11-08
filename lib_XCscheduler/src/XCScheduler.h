@@ -1,13 +1,11 @@
 /**
- * @file Scheduler.h
+ * @file XCScheduler.h
 
  *
- * @version XMOS 1.0 by fabriceo https://github.com/fabriceo
- * ALL credits to mikael patel! https://github.com/mikaelpatel
+ * @version XMOS 2.0 by fabriceo https://github.com/fabriceo
  *
  * @section License
- * Copyright (C) 2015-2017, Mikael Patel
- * Copyright (C) 2019, fabrice oudert
+ * Copyright (C) 2023, fabrice oudert
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -23,118 +21,75 @@
 #ifndef XCSCHEDULER_H
 #define XCSCHEDULER_H
 
-#include <setjmp.h>
-#include <stddef.h>
-#include <stdint.h>
+#define xcsprintf(...) // printf(__VA_ARGS__)
+#include <stdio.h>      //for printf
 
+//helper macros to automatically get the address of the task function AND its stack size.
+//works in both XC and cpp. For cpp task, the name of the task function MUST be declared "extern C"
+//second parameter is used to pass a value to the task.
+//the task name is stored and also passed to the task as an optional parameter
+#define XCSchedulerCreateTaskParam(_x,_y) \
+        { const char name[] = #_x; unsigned addr, stack; \
+          asm volatile ("ldap r11, " #_x "; mov %0, r11" : "=r"(addr) : : "r11" );\
+          asm volatile ("ldc %0,   " #_x ".nstackwords"  : "=r"(stack) ); \
+          XCSchedulerCreate( addr, stack, (unsigned)&name, (_y) ); }
+
+#define XCSchedulerCreateTask(_x) XCSchedulerCreateTaskParam(_x,0)
+
+#ifndef EXTERN
 #ifdef __cplusplus
+#define EXTERN extern "C"
+#else  //stdc or xc
+#define EXTERN
+#endif
+#endif
 
-class SchedulerClass {
-public:
+//prototypes
+//add a task function in the list for the current thread, and allocate a stack
+EXTERN unsigned XCSchedulerCreate(const unsigned taskAddress, const unsigned stackSize, const unsigned name, const unsigned param);
+//switch to the next task into the list
+EXTERN unsigned XCSchedulerYield();
+//switch to the next task into the list during max microseconds
+EXTERN unsigned XCSchedulerYieldDelay(int max);
 
-   /**
-   * Function prototype for tasks.
-   */
-  typedef void (*func_t)();
-
-  static void init(unsigned stackPtr, const unsigned stackSize);
-
-  /**
-   * Initiate scheduler and main program with given stack size. Should
-   * be called at first by the main setup function. Returns true if stack
-   * allocation was successful regarding the minimum stack pointer provided
-   * @param[in] stackSize in bytes.
-   * @param[in] optional (otherwise NULL) value of minimum StackPointer.
-   * @return bool.
-   */
-  static bool setup(const unsigned stackSize);
-
-  /**
-   * Start a task with given stack size. Should be
-   * called from main program (in setup). Returns true if
-   * stack properly allocated  otherwise false.
-   * @param[in] task function
-   * @param[in] stackSize in bytes.
-   * @return bool.
-   */
-  static bool start(const func_t taskFunction, const unsigned stackSize);
+//shortcuts
+static inline unsigned yield()                  {  return XCSchedulerYield(); }
+static inline unsigned yieldDelay(int max)      {  return XCSchedulerYieldDelay(max); }
 
 
-  /**
-   * Context switch to next task in run queue.
-   */
-  static void yield();
-
-  /**
-   * Return minimum remaining stack in bytes for running task.
-   * The value depends on executed function call depth and interrupt
-   * service routines during the execution (so far).
-   * @return bytes
-   */
-  static size_t stackLeft();
-
-protected:
-
-  static bool initTask(func_t taskFunction, unsigned* stackAddr);
-
-  static void initStack(unsigned* stack, unsigned size);
-
-  /**
-   * Task run-time structure.
-   */
-  struct task_t {
-    task_t* next;       //!< Next task.
-    task_t* prev;       //!< Previous task.
-    jmp_buf context;    //!< Task context.
-    unsigned* stack;    //!< Task stack botom.
-  };
-
-  /** Main task. */
-  static task_t s_main;
-
-  /** Running task. */
-  static task_t* s_running;
-
-  /** Task stack allocation top. */
-  static unsigned s_top;
-
-  /** upper value of the sp register as given when calling the SchedulerInit() from xc program. */
-  static unsigned initialStack;
-
-  /** lower value acceptable for the stack pointer within the scheduled tasks. */
-  static unsigned lowerStack;
-};
-
-/** Scheduler single-ton. */
-extern SchedulerClass XCScheduler;
-
-/**
- * Syntactic sugar for scheduler based busy-wait for condition;
- * yield until condition is valid. May require volatile condition
- * variable(s).
- * @param[in] cond condition to await.
- */
-#define await(cond) while (!(cond)) Scheduler.yield()
-
-extern "C" {
-void yield();
-void XCSchedulerInit(const unsigned stackSize);
-}
-#endif //__cplusplus
+//test presence of a token or data in a given channel, non blocking code
+static inline int XCStestChan(unsigned res)
+{ asm volatile (
+        "\n\t   ldap r11, .Levent%= "          //get address of temporary label below
+        "\n\t   setv res[%0], r11 "            //set resource vector
+        "\n\t   eeu  res[%0]"                  //default result to 1 and enable resource event
+        "\n\t   ldc %0, 1"                     //default result to 1 and enable resource event
+        "\n\t   setsr 1"                       //enable events in our thread
+        "\n\t   ldc %0, 0"                     //result forced to 0 if no events, cores all enable flags
+        "\n\t   clre"                          //result forced to 0 if no events, cores all enable flags
+        "\n  .Levent%=:"                       //event entry point
+        : "=r"(res) : : "r11" );               //return result
+    return res; }
+#endif
 
 #ifdef __XC__
-/*
- * this is the key function for switching the cooperative scheduler to another task
- * can be called from either a cpp function or a xc function (not task)
- */
-//extern void yield();
+static inline int XCStestStreamingChanend( streaming chanend ch ) {
+    unsigned uch; asm volatile("mov %0,%1":"=r"(uch):"r"(ch)); return XCStestChan(uch); }
 
-/*
- * this procedure is to be called imedialtely from the xc task dedicated to this cooperative scheduler
- * the parameter is the size of the stack for all the cooperative tasks, and has to be equal to the
- * #pramga stackfunction value expected just above (*4 as there is 4 bytes by words)
- */
-extern void XCSchedulerInit(const unsigned stackSize);
+static inline int XCStestChanend( chanend ch ) {
+    unsigned uch; asm volatile("mov %0,%1":"=r"(uch):"r"(ch)); return XCStestChan(uch); }
+#else
+static inline int XCStestChanend( unsigned ch ) { return XCStestChan(ch); }
 #endif
 
+
+#ifndef XC_GET_TIME_
+#define XC_GET_TIME_
+static inline int XC_GET_TIME() { int time; asm volatile("gettime %0":"=r"(time)); return time; }
+static inline int XC_SET_TIME(int x) { int time; asm volatile("gettime %0":"=r"(time)); time+= x; return time;}
+static inline int XC_END_TIME(int x) { int time; asm volatile("gettime %0":"=r"(time)); time-= x; return (time>0); }
 #endif
+
+//get the stack size of a defined global symbol into a variable. REQUIRES an extern "C" declaration for cpp symbol
+#define XCS_GET_NSTACKWORDS(_f,_n) asm volatile ("ldc %0, " #_f ".nstackwords" : "=r"(_n) )
+

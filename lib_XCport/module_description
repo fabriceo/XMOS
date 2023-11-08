@@ -1,0 +1,47 @@
+This library enable using XS ports in arduino style with some pin naming conventions.
+example:
+each pin can be described by a port name with its bit number or the package pin XDxx or X0Dxx or X1Dxx 
+where xx start at 00 and ends at 43
+XDxx formally points on the current tile ports
+X0Dxx formally points to the tile0 ports and X1Dxx on tile1
+(other tiles not supported)
+accessing tileA form tileB is made by use of interfaces and requires a colateral distributable task declaration
+
+port based pin names :
+P1A0 to P1P0, P4A0..7 to P4E0..7, P8A0..7 to P8D4..7, P16A0..15 and B0..15
+
+other port names : 
+P1A to P1P, P4A to P4E, P8A to P8D, P16A and B, P32A
+
+library provides pinMode, digitalWrite and digitalRead function with wrapper in c++.
+each of these function will use either a direct access to the port via XC functions
+or will call an XC interface to handle the port access on the other tile if required.
+
+digitalReadWrite can be used eitehr for single bit access on a port, or total port access example:
+access to the 1 bit port P1A can be done in this way:
+digitalWrite(P1A, 1);
+digitlaWrite(P1A0, 1);
+digitalWrite(XD00, 1);
+to force access to tile 1, the following can be done:
+digitalWrite(PORT_ON_TILE(P1A0, 1), 1);
+digitalWrite(X1D00, 1);
+
+accessing a whole port:
+digitalWrite(P8A, 0x10);
+digitalWrite(P16B, 0x1234);
+
+accessing a 1bit from a multibit port is as easy as:
+digitalWrite(P4B2, 1);
+digitalWrite(P8A4, 1);
+or using and/or masking feature with folowing syntax:
+digitalWrite(P8A, 0x00EF0010); where 0x00EF is the AND mask and 0x0010 is the OR mask 
+
+same mechanism for digitalRead and pinMode.
+pinMode is allocating the port ressource to the running core. 
+forgetting it will generate an exception at run time when trying to access the port.
+
+managing the cross tile access is as simple as adding a select function 
+as a case statement in any task located on the other tile:
+select { case XCportAccess(portIF ); .. } 
+where portIF is the interface declared for the inter task comunication
+
