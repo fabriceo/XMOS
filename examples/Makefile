@@ -15,18 +15,16 @@ BUILD_FLAGS = -save-temps -Wall -fno-xta-info -O3 -fschedule -g  -report -fxscop
 # XCC_XC_FLAGS, XCC_C_FLAGS, XCC_ASM_FLAGS, XCC_CPP_FLAGS
 # If the variable XCC_MAP_FLAGS is set it overrides the flags passed to
 # xcc for the final link (mapping) stage.
-XCC_FLAGS = $(BUILD_FLAGS)
-XCC_CPP_FLAGS = $(BUILD_FLAGS)
+XCC_FLAGS		= $(BUILD_FLAGS)
+XCC_CPP_FLAGS	= $(BUILD_FLAGS)
 
 # The USED_MODULES variable lists other module used by the application.
 USED_MODULES = lib_XCscheduler
 
-#select where are the source files for the choosen example to compile
+#select where are the source files and the main() function for the choosen example to compile
 SOURCE_DIRS = src/example3
 
 INCLUDE_DIRS =
-
-LIB_DIRS =
 
 EXCLUDE_FILES =
 

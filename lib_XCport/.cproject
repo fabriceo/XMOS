@@ -181,6 +181,11 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/lib_locks/doc/pdf}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/lib_locks/doc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/lib_locks/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/examples}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/examples/doc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/examples/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/examples/src/example1}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/examples/src/example2}&quot;"/>
 								</option>
 								<inputType id="com.xmos.cdt.xc.compiler.input.951199294" name="XC" superClass="com.xmos.cdt.xc.compiler.input"/>
 							</tool>
@@ -490,6 +495,11 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/lib_locks/doc/pdf}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/lib_locks/doc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/lib_locks/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/examples}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/examples/doc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/examples/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/examples/src/example1}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/examples/src/example2}&quot;"/>
 								</option>
 								<inputType id="com.xmos.cdt.c.compiler.input.c.1101874974" name="C" superClass="com.xmos.cdt.c.compiler.input.c"/>
 							</tool>
@@ -804,6 +814,11 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/lib_locks/doc/pdf}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/lib_locks/doc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/lib_locks/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/examples}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/examples/doc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/examples/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/examples/src/example1}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/examples/src/example2}&quot;"/>
 								</option>
 								<inputType id="com.xmos.cdt.cxx.compiler.input.cpp.289968898" name="C++" superClass="com.xmos.cdt.cxx.compiler.input.cpp"/>
 							</tool>

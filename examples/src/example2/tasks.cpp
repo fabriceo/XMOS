@@ -14,12 +14,10 @@
  * the yield() mecanism doesnt require use of atomic statements to access them.
  */
 volatile int loopCount;
-volatile unsigned taskChanend;
 
 EXTERN
 void mytask1();  //mandatory but only used to be able to get mytask1.nstackwords
 void mytask1() {
-
 
   // the following yield forces a task switch in order to execute the next task setup, before enterring our own local loop
   yield();
@@ -35,13 +33,15 @@ void mytask1() {
           printf("loopCount changed to %d\n",loop);
           if (loop == 10) {
               printf("*** ending mytask1 definitely ****\n");
-              loopCount = -10;
+              loopCount = -10;  //this will force loop() to exit
               return;
           }
       }
     yield();
   }
 }
+
+
 
 EXTERN
 void setup(); // this ensure that the main xc program can access it
@@ -52,20 +52,24 @@ void setup(){
     XCS_GET_NSTACKWORDS(mytask1, nstackw);
     printf("allocate cpp mytask1(), requires %d nstackwords\n", nstackw);
     XCSchedulerCreateTask(mytask1);
-    // global variable initialization for our main loop demo code
+    // global variable initialization for our main loop demo code below
     loopCount = 0;
+    XCSchedulerCreateTask(loop);
     printf("leaving cpp setup()\n");
 }
 
-/* this loop function can be populated, like in an arduino type of program. by defaut an empty weak loop function exist in XCduino
- * the loop() is called by the .xc main program within the select default statement. see xc main code where the XCduinoTask is declared
+/* this loop function can be populated, like in an arduino type of program.
+ * by defaut an empty weak loop function exist in XCduino
  */
 EXTERN
 void loop();
-void loop(){
-    while(loopCount >= 0) {
-    yieldDelay(20000000);//every 200ms we come back below
-    loopCount++;
-    }
+void loop() {
+    do {
+        yieldDelay(20000000);//every 200ms we come back below
+        loopCount++;
+    } while(loopCount >= 0);
     printf("*** ending loop() definitely ****\n");
 }
+
+
+//static void loop_handler(){ while(1) { loop(); yield(); } }

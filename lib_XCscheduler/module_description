@@ -1,8 +1,8 @@
 
 
-can be used in mutiple threads, each thread having its own task list and context.
+can be used in mutiple XC threads, each thread having its own task list and context.
 
-simply invoke the macro XCSchedulerCreateTask(mytask1) for allocating each task at the begining of a thread 
+simply invoke the macro XCSchedulerCreateTask(mytask1) for allocating each task  
 and then call yield() as much as possible, like in a default select case
 
 it is possible to pass an unsigned parameter to the created task by simply using the other macro: 
@@ -13,9 +13,14 @@ a second optional parameter is also passed in r1, pointing on the task name (cha
 
 remark:
 -for each xcore thread, a task list is maintained, where the task are appened in the creation order
--for each task created, the stack is allocated once with malloc().
--if a task ends (reach its end of code) it will be removed from the list, stack is deallocated, and control is passed to next task in the list 
+-for each task created, the stack is allocated once with malloc() based on the compiler nstackwords information.
+-if a task ends (reach its end of code) it will be removed from the list, stack is deallocated/free(), 
+  and control is passed back to main task, as we do not trust next task context
 -yield() instruction imediately stores the current task context and jump to the next one in the list.
  if none, it returns to the yield() of the thread (considered as the maintask).
 -it is possible to "yield" for a certain amount of time in cpu cycle with yieldDelay(x)
  this can be compared to a "delay" function where the spare time is given to any other task in the list.
+ 
+ by commenting line 49 of the XCSchedulerYield.s, it is possible to change the behavior of yield():
+ instead of going through all teh task in the list, it switch back an forth with the main task.
+ ideal to give maximum cpu time to a main select statement.
