@@ -1,12 +1,30 @@
 /*
- * XCduino.cpp
+ * lib.xc
  *
  *  Created on: 6 juin 2019
- *      Author: Fabrice
+ *      Author: Fabriceo
+ *      this file contains procedure needed for providing some sort of arduino compatibility
+ *      they are writen in the xc langage section as they use xc resources (timer or port).
  */
 
-
 #include "XCduino.h"
+#include "XCgettime.h"
+
+void delayMicroseconds(int us){
+    int time = XC_SET_TIME( clockCyclesPerMicrosecond * us );
+    while (! XC_END_TIME(time)) { };
+}
+
+void delayUs(int us){
+   delayMicroseconds(us);
+}
+
+
+void delay(int ms){
+    int time = XCmillis() + ms;
+    while ( (time - XCmillis() ) > 0 ) { yield(); }
+}
+
 
 // Declared weak in Arduino.h to allow user redefinitions.
 int atexit(void (* /*func*/ )()) { return 0; }

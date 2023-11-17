@@ -47,9 +47,9 @@ EXTERN
 void setup(); // this ensure that the main xc program can access it
 void setup(){
     int nstackw;
-    XCS_GET_NSTACKWORDS(setup, nstackw);
+    XC_GET_FUNC_NSTACKWORDS(setup, nstackw);
     printf("enterring cpp setup(), requires %d nstackwords\n", nstackw);
-    XCS_GET_NSTACKWORDS(mytask1, nstackw);
+    XC_GET_FUNC_NSTACKWORDS(mytask1, nstackw);
     printf("allocate cpp mytask1(), requires %d nstackwords\n", nstackw);
     XCSchedulerCreateTask(mytask1);
     // global variable initialization for our main loop demo code below

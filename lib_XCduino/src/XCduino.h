@@ -1,7 +1,7 @@
 /*
- * lib.h
+ * XCduino.h
  *
- *  Created on: 6 juin 2019
+ *  Created on: 6 juin 2019 update november 2023
  *      Author: Fabriceo
     an attempt to provide a libray header and programs
     to bring arduino style in the xmos programing environement
@@ -26,16 +26,13 @@
 #endif // ndef EXTERNAL
 
 
-#if defined(__XS1B__) || defined(__XS2A__) || defined(__XS3A__)
 #include <XS1.h>
 #include <xccompat.h>
-#endif
 #include <stdint.h>
 // #include "XCprint.h" // this is the standard XC print
 #include <stdio.h> // this is standard printf scanf stuff
-
-// lets include the digitalRead & write function which are used by everyone
-//#include "XCport.h"
+// include the digitalRead & write function which are used by everyone
+#include "XCport.h"
 
 /* the below includes comes from xmos libray and they are not c++, so we encapsule them within extern "C" {}
  */
@@ -48,6 +45,9 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
+
+#include "XCgettime.h"
+
 
 /* all defines or functions below are compatibles with cpp or xc langage
  * they are based or coming from an orginal arduino.h file
@@ -119,27 +119,17 @@ typedef  unsigned char byte;
 #ifndef SET_SHARED_GLOBAL
 #define SET_SHARED_GLOBAL(g, v) asm volatile("stw %0, dp[" #g "]"::"r"(v):"memory")
 #endif
-/** get the instant value of the SP stack pointer register, x parameter can be local or global variable */
-#ifndef GET_SP0
-#define GET_SP0(x)   asm volatile("ldaw %0, sp[0]":"=r"(x)::"memory")
-#endif
 
 /*
- * typedef void (*voidFuncPtr)(void);
+ * typedef void (*voidFuncPtr)(void); //not compatible with XC ...
  */
 
 /** time handling basic arduino functions existin in XCduino.xc or .cpp*/
-EXTERNAL int micros();
-EXTERNAL int millis();
+static inline int micros() { return XCmicros(); }
+static inline int millis() { return XCmillis(); }
 EXTERNAL void delay(int ms);
 EXTERNAL void delayMicroseconds(int us);
 EXTERNAL void delayUs(int us);
-EXTERNAL void yieldMs(int ms);
-EXTERNAL void yieldUs(int ms);
-EXTERNAL void yieldSyncUs(REFERENCE_PARAM(int,localTimer), int us);
-EXTERNAL void yieldSyncMs(REFERENCE_PARAM(int,localTimer), int ms);
-EXTERNAL int getXCtimer();
-EXTERNAL void XCtimerReset();
 
 /** coming from XCduino.cpp */
 EXTERNAL void yield();
@@ -147,10 +137,6 @@ EXTERNAL void init();
 EXTERNAL void initVariant();
 EXTERNAL int  setup();
 EXTERNAL void loop();
-
-#ifdef __XC__
-extern timer XCtimer;
-#endif
 
 
 #endif /* XCDUINO_H_ */

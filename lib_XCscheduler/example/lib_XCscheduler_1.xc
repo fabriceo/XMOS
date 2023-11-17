@@ -98,8 +98,8 @@ void demoyield(){
 int main(){
 
         par {
-            //{ demoyield(); }
-            { demorandom(); }
+            { demoyield(); }
+            //{ demorandom(); }
         }
     return 0;
 }

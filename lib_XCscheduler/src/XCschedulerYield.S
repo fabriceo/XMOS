@@ -30,7 +30,7 @@ XCSchedulerYield:
 
 	ENTSP_lu6	STACKWORDS			//extend stack to save register and store return adress (lr)
 
-	std  r5, r4, sp[1]				//save all registrs r4..r10, not only those used here!
+	std  r5, r4, sp[1]				//save all registrs r4..r10, full context, not only those used here!
 	std  r7, r6, sp[2]
 	std  r9, r8, sp[3]
 	stw  r10,    sp[4*2]
@@ -40,7 +40,7 @@ XCSchedulerYield:
 	ldaw r1, dp[ threadArray ]
 	add  thread, r1, r0				//thread = &taskArray[ get_logic_core_id ]
 
-	ldw  current, thread[_current]	//load where we come from : context = thread->current
+	ldw  current, thread[_current]	//load where we come from : current = thread->current
 	bf   current, .L_return			//check if one task was created otherwise just return
 	mov	 context, current
 	ldw	 maintask, thread[_main]
@@ -75,28 +75,24 @@ XCSchedulerYield:
 	bu   .L_test_sp
 
 .L_task_delete:						//move current to next task and free allocated memory
-
 	ldw  r1, current[_next]			//r1 = current->next
 	ldw  r0, current[_prev]			//r0 = current->prev
 
 	stw  r1, r0[_next]				//current->prev->next = r1 = current->next
 	stw  r0, r1[_prev]				//current->next->prev = r0 = current->prev
 
-.L_task_delete2:
-	mov	 r0, current				//prepare param for pointer deallocation
+	mov	 r0, current				//prepare register for pointer deallocation
 	mov  current, r1				//move to next one : current = r1 = current->next
 
 	bl   free						//deallocate r0
 
-.L_test_sp:							//check if task is flagged for deletion (0)
-
+.L_test_sp:							//check if next task is flagged for deletion (_SP == 0)
 	ldw	r0, current[_sp]			//load current->sp
-	bf	r0, .L_task_delete			//check if task is flagged for deletion
+	bf	r0, .L_task_delete			//jump to remove-deallocate
 
 	stw  current, thread[_current]	//commit next task: thread->current = current
 
 .L_move_to_current:
-
 	ldaw r0, sp[0]					//load current stack pointer
 	stw	r0, context[_sp]			//save it in original task context
 
@@ -121,7 +117,6 @@ XCSchedulerYield:
 	stw	current, thread[_current]	//commit : thread->current = current = thread->main
 
 .L_yieldToNext:
-
 	ldw	r0, current[_sp]			//load target task stack pointer for this task
 	set	sp, r0						//set stack pointer to current->sp
 

@@ -46,7 +46,7 @@ unsigned XCSchedulerCreate(const unsigned taskAddress, const unsigned stackSize,
     //convert stacksize to bytes and add tcb size
     int alloc = (stackSize+1) * 4 + sizeof(task_t);
     task_t * tcb = (task_t *)malloc( alloc + 4);    //add 4 as SP points on the highest word where lr is stored before stack pointer is changed
-    if (tcb == 0) return 0;
+    if (tcb == 0) __builtin_trap();
     //add new task at the end of the thread list
     tcb->next = thread->main;
     tcb->prev = thread->main->prev; //equivalent to last

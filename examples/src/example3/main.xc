@@ -6,5 +6,5 @@
  */
 
 
-#include "../../lib_XCscheduler/example/lib_XCscheduler_1.xc"
+#include "lib_XCscheduler_1.xc"
 

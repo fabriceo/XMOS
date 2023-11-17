@@ -8,7 +8,7 @@ TARGET = OKTODAC
 # the project name
 APP_NAME = example
 
-BUILD_FLAGS = -save-temps -Wall -fno-xta-info -O3 -fschedule -g  -report -fxscope -DXSCOPE #-fverbose-asm -march=xs2a 
+BUILD_FLAGS = -save-temps -Wall -fno-xta-info -O3 -fschedule -g -report -fxscope -DXSCOPE #-fverbose-asm -march=xs2a 
 
 # The flags passed to xcc when building the application
 # You can also set the following to override flags for a particular language:
@@ -16,13 +16,14 @@ BUILD_FLAGS = -save-temps -Wall -fno-xta-info -O3 -fschedule -g  -report -fxscop
 # If the variable XCC_MAP_FLAGS is set it overrides the flags passed to
 # xcc for the final link (mapping) stage.
 XCC_FLAGS		= $(BUILD_FLAGS)
-XCC_CPP_FLAGS	= $(BUILD_FLAGS)
+XCC_CPP_FLAGS	= $(BUILD_FLAGS)  -std=c++11
 
 # The USED_MODULES variable lists other module used by the application.
-USED_MODULES = lib_XCscheduler
+USED_MODULES = lib_XCscheduler #lib_XCduino lib_XCport
+#USED_MODULES = lib_ArduinoAPI
 
 #select where are the source files and the main() function for the choosen example to compile
-SOURCE_DIRS = src/example3
+SOURCE_DIRS = src/example2
 
 INCLUDE_DIRS =
 
