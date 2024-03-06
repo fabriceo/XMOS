@@ -60,15 +60,15 @@ void getDacStatus(){
     printf("Sound presence      = 0x%2X\n", data[5]);
     printf("trigger             = 0x%2X\n", data[6]);
     short vol= (signed char)data[7];
-    if (vol>0)
-        printf("usb volume          = muted (%ddB)\n", -vol-1 );
+    if (vol & 128)
+        printf("usb volume          = muted (%ddB)\n", -(vol & 127) );
     else
-        printf("usb volume          = %ddB\n", vol );
+        printf("usb volume          = %ddB\n", -vol );
     vol= (signed char)data[8];
-    if (vol>0)
-        printf("front panel volume  = muted (%ddB)\n", -vol );
+    if (vol & 128)
+        printf("front panel volume  = muted (%ddB)\n", -(vol & 127) );
     else
-        printf("front panel volume  = %ddB\n", vol );
+        printf("front panel volume  = %ddB\n", -vol );
     printf("xmos BCD version    = %d.%2X\n", data[10],data[9]);
     printf("usb vendor ID       = 0x%4X\n", (data[11]+(data[12]<<8)) );
     printf("usb product ID      = 0x%4X\n", (data[13]+(data[14]<<8)) );

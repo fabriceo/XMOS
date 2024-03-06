@@ -18,6 +18,8 @@ unsigned int eraseflash=0;
 unsigned int testvidpid = 0;
 
 
+// send the dsp binary program to the dac ram memory
+
 int vendor_dsp_load_page(unsigned int block_num, unsigned int size, unsigned char *data) {
     int result = libusb_control_transfer(devh, VENDOR_REQUEST_TO_DEV, VENDOR_LOAD_DSP, block_num, size, data, size, 0);
     return result;
@@ -68,8 +70,8 @@ int load_dsp_prog(char *file) {
     memset(block_data, 0x0, block_size);
     fread(block_data, 1, block_size, inFile);
     result = vendor_dsp_load_page(blockCount, block_size, block_data);
-    if (0) {
-            fprintf(stderr,"Error: dsp_load_page returned an error %d\n",result);
+    if (result <0) {
+            fprintf(stderr,"Error: dsp_load_page returned an usb error %d at block %d\n",result,blockCount);
            return -1; }
     blockCount++;
     if ((blockCount & 63) == 0)
@@ -98,7 +100,7 @@ void dspReadMem(int addr){
     for (int i=0; i<16; i++) {
         int x = data[i];
         float f = (float)data[i];
-        printf("0x%4X : %8X %d %f %f\n",i,x,x,F(x,24),f);
+        printf("0x%4X : %8X %d %f %f\n",i,x,x,F28(x),f);
     }
 }
 
@@ -150,6 +152,7 @@ void dsp_printcmd() {
     fprintf(stderr, "--flashread page\n");   // read 64 bytes of flash in data partition at adress page*64
     fprintf(stderr, "--flasherase sector\n");// erase a sector (4096bytes=64pages)  in data partition (starting 0)
     fprintf(stderr, "--testvidpid hex8\n");  // setup a new vid & pid in volatile memory and reboot the device
+    fprintf(stderr, "--dspbasic file\n");    // read text file, and generate bin file with basic AVDSP code
 }
 
 int dsp_testcmd(int argc, char **argv, int argi) {
