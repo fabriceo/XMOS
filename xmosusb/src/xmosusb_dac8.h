@@ -69,7 +69,8 @@ void getDacStatus(){
         printf("front panel volume  = muted (%ddB)\n", -(vol & 127) );
     else
         printf("front panel volume  = %ddB\n", -vol );
-    printf("xmos BCD version    = %d.%2X\n", data[10],data[9]);
+    printf("xmos BCD version    = %d.%2X", data[10] & 0x7F,data[9]);
+    if (data[10] & 0x80) printf("dsp capability\n"); else printf("\n");
     printf("usb vendor ID       = 0x%4X\n", (data[11]+(data[12]<<8)) );
     printf("usb product ID      = 0x%4X\n", (data[13]+(data[14]<<8)) );
     int maxFreq = (data[15]+(data[16]<<8)+(data[17]<<16)+(data[18]<<24));

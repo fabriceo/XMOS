@@ -336,7 +336,7 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
 
                         libusb_free_config_descriptor(config_desc);
                     } else {
-                        if (printmode) printf(" ? No access to descriptor\n"); }
+                        if (printmode) printf(" ? No access to descriptor (pid=%x,bcd=%x)\n",devicePid,BCDdevice); }
                     if (devhopen>=0) libusb_close(devh);
                 } // libusb_open
                 else {
@@ -821,13 +821,29 @@ int main(int argc, char **argv) {
   if (listdev == 0) {
 
       if (xmosload) {
-
+#ifdef WINDOWS
           if (BCDdevice >= 0x150) {
-              printf("BCD >= 150 : use Thesycon DFU utility\n");
+              printf("BCD version >= 150 : use Thesycon DFU utility\n");
               exit(-1);
           }
+#endif
           xmos_enterdfu(XMOS_DFU_IF);
-
+          if (BCDdevice >= 0x150) {
+              if (devhopen>=0) libusb_close(devh);
+              printf("Device restarting, waiting usb re-enumeration (10seconds max)...\n");
+              int result;
+              printf("#");fflush(stdout);
+                SLEEP(1);
+                for (int i=1; i<=10; i++) {
+                    printf("#");fflush(stdout);
+                    if ((result = find_usb_device(deviceID, 0, 1)) >= 0) break;
+                    SLEEP(1);
+                }
+                if (result < 0) {
+                    fprintf(stderr, "\nUSB DFU Device not identified after 10sec...\n");
+                    exit(-1);
+                }
+          }
           int result = write_dfu_image(XMOS_DFU_IF, filename, 0, NULL, 0);
           if (result >= 0) {
               int oldBCD = BCDdevice;
