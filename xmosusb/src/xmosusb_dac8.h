@@ -55,7 +55,6 @@ void getDacStatus(){
     int i2sfreq = tableFreq[data[1] & 7];
     printf("I2S Audio config    = 0x%2X (%d)\n", data[1], tableFreq[data[1] & 7]);
     printf("USB Audio config    = 0x%2X (%d)\n", data[2], tableFreq[data[2] & 7]);
-    printf("DSP program number  = %d\n",    data[3]);
     printf("front panel version = %d\n",    data[4]);
     printf("Sound presence      = 0x%2X\n", data[5]);
     printf("trigger             = 0x%2X\n", data[6]);
@@ -78,11 +77,12 @@ void getDacStatus(){
     int progress = (data[19]+(data[20]<<8)+(data[21]<<16)+(data[22]<<24));
     printf("front panel status  = %d ",    progress );
     printfwstatus(progress);
-    printf("decimation factor   = %d\n",    data[23] );
     int maxTask = data[24];
     printf("maximum dsp tasks   = %d\n",    (maxTask) );
     int maxDsp = 100000000/i2sfreq;
     if (maxTask) {
+        printf("DSP program number  = %d\n",    data[3]);
+        printf("decimation factor   = %d\n",    data[23] );
         for (int i=0; i<= maxTask; i++)
             if (i != maxTask)
                  printf("dsp %d: instructions = %d\n", i+1, (data[25+i+i]+(data[25+i+i+1]<<8)) );
