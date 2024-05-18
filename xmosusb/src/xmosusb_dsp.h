@@ -15,7 +15,7 @@ unsigned int dspreadmem = 0;
 unsigned int dspreadheader = 0;
 unsigned int readflash= 0;
 unsigned int eraseflash=0;
-unsigned int testvidpid = 0;
+unsigned int changevidpid = 0;
 
 
 // send the dsp binary program to the dac ram memory
@@ -82,15 +82,15 @@ int load_dsp_prog(char *file) {
   if (0) {
           fprintf(stderr,"Error: dsp_load_page final step returned an error %d\n",result);
          return -1; }
-   printf("... dsp load completed %d bytes\n",bin_size);
+   printf("... dsp load completed, %d bytes\n\n",bin_size);
 
   return 0;
 }
 
 
 // read some data related to the dsp working area (parameters)
-#define F28(x) ((double)(x)/(double)(1<<28))
-#define F(x,y) ((double)(x)/(double)(1<<y))
+#define F28(x) ((double)(x)/(double)(1UL<<28))
+#define F(x,y) ((double)(x)/(double)(1ULL<<y))
 
 void dspReadMem(int addr){
     unsigned data[16];
@@ -143,16 +143,15 @@ void dspReadHeader(){
 }
 
 void dsp_printcmd() {
-    fprintf(stderr, "--dspload  file\n");    // send the file binary content (dsp opcode) to the xmos dsp working memory
-    fprintf(stderr, "--dspwrite slot\n");    // save xmos dsp memory content to flash slot N (1..15)
-    fprintf(stderr, "--dspread  slot\n");    // load xmos dsp memory content with flash slot 1..15
-    fprintf(stderr, "--dspreadmem addr\n");  // read 16 word of data in the dsp data area
-    fprintf(stderr, "--dspheader\n");        // read dsp header of dsp program in memory to provide some info about it
-    fprintf(stderr, "--dspprog  val\n");     // set the dsp program number in the front panel menu settings and load it from flash
-    fprintf(stderr, "--flashread page\n");   // read 64 bytes of flash in data partition at adress page*64
-    fprintf(stderr, "--flasherase sector\n");// erase a sector (4096bytes=64pages)  in data partition (starting 0)
-    fprintf(stderr, "--testvidpid hex8\n");  // setup a new vid & pid in volatile memory and reboot the device
-    fprintf(stderr, "--dspbasic file\n");    // read text file, and generate bin file with basic AVDSP code
+    fprintf(stderr, "--dspload  file        load a dsp binary file (opcodes) into DSP memory area.\n");    // send the file binary content (dsp opcode) to the xmos dsp working memory
+    fprintf(stderr, "--dspwrite slot        save the DSP memory area to permanent flash location.\n");    // save xmos dsp memory content to flash slot N (1..15)
+    fprintf(stderr, "--dspread  slot        load DSP memory with a program stored in flash location.\n");    // load xmos dsp memory content with flash slot 1..15
+    fprintf(stderr, "--dspreadmem addr      read data from DSP memory location.\n");  // read 16 word of data in the dsp data area
+    fprintf(stderr, "--dspheader            read DSP program header information from DSP memory area.\n");        // read dsp header of dsp program in memory to provide some info about it
+    fprintf(stderr, "--dspprog  val         force loading (and starting) a DSP program from flash location\n");     // set the dsp program number in the front panel menu settings and load it from flash
+    fprintf(stderr, "--flashread page       read 64byte of data from flash data partition\n");   // read 64 bytes of flash in data partition at adress page*64
+    fprintf(stderr, "--flasherase sector    erase 4096 bytes of a flash sector in data partition.\n");// erase a sector (4096bytes=64pages)  in data partition (starting 0)
+    fprintf(stderr, "--changevidpid hex8    set a temporary USB VIDPID and reset the XMOS.\n");  // setup a new vid & pid in volatile memory and reboot the device
 }
 
 int dsp_testcmd(int argc, char **argv, int argi) {
@@ -200,11 +199,11 @@ int dsp_testcmd(int argc, char **argv, int argi) {
           exit (-1); }
         dspread = 1; }
     else
-    if (strcmp(argv[argi], "--testvidpid") == 0) {
+    if (strcmp(argv[argi], "--changevidpid") == 0) {
         if (argv[argi+1]) {
             param1 = strtoul(argv[argi+1], NULL, 16);
         }
-        testvidpid = 1; }
+        changevidpid = 1; }
     else
         if (strcmp(argv[argi], "--flashread") == 0) {
             if (argv[argi+1]) {
@@ -229,7 +228,6 @@ int dsp_testcmd(int argc, char **argv, int argi) {
 int dsp_executecmd() {
 
     if (dspload) {
-        //vendor_to_dev(VENDOR_AUDIO_MUTE,0,0); // can be an option, then user need to unmute
         vendor_to_dev(VENDOR_AUDIO_STOP,0,0);
         load_dsp_prog(filename);
         vendor_to_dev(VENDOR_AUDIO_START,0,0);
@@ -247,7 +245,7 @@ int dsp_executecmd() {
         vendor_to_dev(VENDOR_AUDIO_STOP, 0, 0);
         data[0] = param1; // no need for VENDOR_OPEN_FLASH nor VENDOR_CLOSE_FLASH
         vendor_from_dev(VENDOR_READ_DSP_FLASH, param1, 0, data, 4);
-        int freq = (int)data[0] | (int)data[1]<<8 | (int)data[2]<<16 | (int)data[3]<<24;
+        int freq = loadInt(0);//(int)data[0] | (int)data[1]<<8 | (int)data[2]<<16 | (int)data[3]<<24;
         if (freq) printf("Read from flash return max frequency = %d\n",freq);
         vendor_to_dev(VENDOR_AUDIO_START, 0, 0);
     }
@@ -285,16 +283,15 @@ int dsp_executecmd() {
         vendor_to_dev(VENDOR_CLOSE_FLASH,0,0);
         vendor_to_dev(VENDOR_AUDIO_START, 0, 0);
     } else
-    if(testvidpid) {
-        printf("testing vid pid 0x%X\n",param1);
+    if(changevidpid) {
+        printf("changing vid pid 0x%X\n",param1);
         if (param1) {
             storeInt(0,param1);
             vendor_to_dev_data(VENDOR_TEST_VID_PID, 0, 0, data, 4); //VENDOR_RESET_DEVICE
             vendor_to_dev(VENDOR_RESET_DEVICE,0,0);
-        } else
-            vendor_from_dev(VENDOR_TEST_VID_PID, 0, 0, data, 4);
-        param1 = loadInt(0);
-        printf("vid pid = 0x%X\n",param1);
+			param1 = loadInt(0);
+			printf("vid pid = 0x%X\n",param1);
+        } 
     } else return 0;
     return 1;
 }

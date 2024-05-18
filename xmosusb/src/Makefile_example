@@ -1,4 +1,4 @@
-
+#demo code to detect windows and set some variabmes accordingly
 OSNAME := $(if $(findstring Windows,$(OS))$(findstring WINDOWS,$(OS)),WINDOWS,$(shell uname -s))
 ifeq ($(OSNAME),WINDOWS)
 	OSCFLAGS = -DWIN32

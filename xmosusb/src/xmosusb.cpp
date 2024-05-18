@@ -34,6 +34,7 @@
 #endif
 
 #ifdef TUSBAUDIOAPI
+// THIS INTERFACE ITH THESYCON API IS NOT YET READY AT ALL
 // exclude rarely-used stuff from Windows headers
 #define WIN32_LEAN_AND_MEAN
 #include <tchar.h>
@@ -42,13 +43,6 @@
 #include "TUsbAudioApiDll.h"
 TUsbAudioApiDll gDrvApi;
 static TUsbAudioHandle devh;
-#else
-#include "libusb.h"
-// document available at http://libusb.sourceforge.net/api-1.0/modules.html
-static libusb_device_handle *devh = NULL;
-#endif
-
-#if defined(TUSBAUDIOAPI)
 static int libusbcontroltransfer(libusb_device_handle *dev_handle,
 	uint8_t request_type, uint8_t bRequest, uint16_t wValue, uint16_t wIndex,
 	unsigned char *data, uint16_t wLength, unsigned int timeout){
@@ -59,7 +53,12 @@ static int libusbcontroltransfer(libusb_device_handle *dev_handle,
 //unsigned char bRequest, unsigned char cs, unsigned char cn, unsigned short unitID, unsigned short wLength, unsigned char *data)
 }
 #else
+	
+#include "libusb.h"
+// document available at http://libusb.sourceforge.net/api-1.0/modules.html
+static libusb_device_handle *devh = NULL;
 #define libusbcontroltransfer libusb_control_transfer
+
 #endif
 
 /* the device's vendor and product id */
@@ -105,7 +104,7 @@ unsigned vidpidList[] = {
 #define VENDOR_REQUEST_TO_DEV    (LIBUSB_ENDPOINT_OUT | LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_RECIPIENT_DEVICE)
 #define VENDOR_REQUEST_FROM_DEV  (LIBUSB_ENDPOINT_IN  | LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_RECIPIENT_DEVICE)
 
-// Standard DFU requests (not really used as the DFU mode is now bridged to the Audio Control commands)
+// Standard DFU requests
 
 #define DFU_DETACH      0
 #define DFU_DNLOAD      1
@@ -180,6 +179,8 @@ static char waitKey(){
     return ch;
 }
 
+//this source code is quite obscur...
+//I have tried to leverage the existing one from xmos and now its heavy and not easy
 static int find_usb_device(unsigned int id, unsigned int list, unsigned int printmode) // list !=0 means printing device information
 {
     libusb_device *dev = NULL;
@@ -341,13 +342,13 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
                 } // libusb_open
                 else {
 #if defined(__linux__)
-                    printf("\nCannot open device => execute the command with proper admin rights or sudo\n");
+                    fprintf(stderr,"\nCannot open device => execute the command with proper admin rights or sudo\n");
 #elif defined( WIN32 )
-                    if (BCDdevice < 0x0150)
-                        printf("\nCannot open device => uninstall any driver first and install winusb (using Zadig 2.8)\n");
+                    //if (BCDdevice < 0x0150) removed 20240517
+					fprintf(stderr,"\nCannot open device => uninstall any driver first and install winusb (using Zadig 2.8)\n");
 #endif
                 }
-                if (!list) break;  // device selected : leave the loop, device is opened
+                if (!list) break;  // device selected : leave the while loop, device is closed
             } // if currentId == id
             currentId++;
         } // foundDev
@@ -372,7 +373,7 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
         */
         ret = libusb_claim_interface(devh,XMOS_DFU_IF);
         if (ret != LIBUSB_SUCCESS) {
-            printf("   Claiming interface Failed (error %d) %s\n", ret, libusb_strerror((enum libusb_error) ret)); }
+            fprintf(stderr,"   Claiming interface Failed (error %d) %s\n", ret, libusb_strerror((enum libusb_error) ret)); }
         if (printmode) printf("\n");
     }
 
@@ -402,7 +403,6 @@ int dfu_getStatus(unsigned int interface, unsigned char *state, unsigned int *ti
                   unsigned char *nextState, unsigned char *strIndex) {
   unsigned int data[2];
   int res = libusb_control_transfer(devh, DFU_REQUEST_TO_DEV, XMOS_DFU_GETSTATUS, 0, interface, (unsigned char *)data, 6, 0);
-
   *state = data[0] & 0xff;
   *timeout = (data[0] >> 8) & 0xffffff;
   *nextState = data[1] & 0xff;
@@ -479,9 +479,10 @@ int write_dfu_image(unsigned int interface, char *file, int printmode, const uns
         if( dfuBlockCount == 0 ) {
             printf("USB Host timeout after 5 seconds while device is erasing flash memory needing 8 seconds.\n");
             printf("The DAC8 is now awaiting an incomplete USB transaction and requires a gentle power OFF and then power ON.\n");
-            printf("Your platform configuration does not seem yet to be compatible with this upgrade process.\n");
+            printf("Your platform configuration does not seem to be compatible with this upgrade process.\n");
 #ifdef WINDOWS
             printf("Please consider unistalling any device driver and reinstalling winusb (with reboot)\n");
+            printf("Using Linux Mint (booted from an USB key) provides an easier solution.\n");
 #else
             printf("Please consider installing another version for libusb or testing on other USB ports/hubs\n");
 #endif
@@ -491,7 +492,7 @@ int write_dfu_image(unsigned int interface, char *file, int printmode, const uns
     }
 
     int gs = dfu_getStatus(interface, &dfuState, &timeout, &nextDfuState, &strIndex);
-    if (gs<0) printf("Unexpected Error in dfu_getStatus %d at block %d\n",gs,dfuBlockCount);
+    if (gs<0) fprintf(stderr,"Unexpected Error in dfu_getStatus %d at block %d\n",gs,dfuBlockCount);
 
     dfuBlockCount++;
     if (printmode == 0) {
@@ -550,7 +551,6 @@ int read_dfu_image(unsigned int interface, char *file) {
 #endif
 
 int vendor_from_dev(int cmd, unsigned value, unsigned index, unsigned char *data, unsigned int size ){
-
     int result = libusb_control_transfer(devh, VENDOR_REQUEST_FROM_DEV, cmd, value, index, data, size, 0);
     return result;
 }
@@ -590,27 +590,27 @@ enum VendorCommands {
 /*D2H*/    VENDOR_AUDIO_FINISH,        // restart normal exchanges
 
            VENDOR_TEST_VID_PID,        // this write a couple of vid pid in non volatile memory so that this is forced in descriptor at next reboot
-           VENDOR_RESET_DEVICE,
+           VENDOR_RESET_DEVICE,		   // xmos is reseted
 
 /*H2D*/    VENDOR_GET_DEVICE_INFO,     // return a set of bytes representing the DAC status and modes.
-/*D2H*/    VENDOR_SET_MODE,            // force the DAC in the given Mode. Front panel is informed and might save this value in eeprom
+/*D2H*/    VENDOR_SET_MODE,            // force the DAC in the given Mode. Front panel is informed 
 
-           VENDOR_SAMD_DOWNLOAD,       // for samd devices, used to reflash embeded fw or to download a newone
+           VENDOR_SAMD_DOWNLOAD,       // for samd devices. Used to reflash embeded fw or to download a newone
 };
 enum VendorCommandsDsp {
-/*D2H*/    VENDOR_SET_DSP_PROG = 0xB0, // force the DAC to switch to the given dsp program by loading it from flash. Front panel is informed and might save this value
-/*D2H*/    VENDOR_LOAD_DSP,            // load a 64bytes page in the dsp program buffer area. page number in wValue, 0 = start, then end
+/*D2H*/    VENDOR_SET_DSP_PROG = 0xB0, // force the DAC to switch to the given dsp program by loading it from flash. Front panel is not
+/*D2H*/    VENDOR_LOAD_DSP,            // load a 64bytes page in the dsp program buffer area. current dsp is stopped. page number in wValue, 0 = start, then end
 /*D2H*/    VENDOR_WRITE_DSP_FLASH,     // write the dsp program being in dsp program buffer, to the FLASH location N, overwrting exsting one and erasing nexts if too large to fit
 /*D2H*/    VENDOR_READ_DSP_FLASH,      // read dsp program from flash memory
-           VENDOR_WRITE_DSP_MEM,       // read up to 16 words in the dsp data area.
+           VENDOR_WRITE_DSP_MEM,       // read up to 16 words in the DSP data area, without interrupt sound data flow
            VENDOR_READ_DSP_MEM,        // write up to 16words in the DSP data area.
 
 /*D2H*/    VENDOR_OPEN_FLASH,          // open the flash memory for read/write
-/*D2H*/    VENDOR_CLOSE_FLASH,          // close flash accees
+/*D2H*/    VENDOR_CLOSE_FLASH,         // close flash accees
 /*H2D*/    VENDOR_READ_FLASH,          // read 64 bytes of flash memory in data partition at addres wValue, wValue representing the page index, one page bieng 64bytes
 /*D2H*/    VENDOR_WRITE_FLASH,         // write 64bytes of data in a 4096bytes buffer. then write a full sector with these 4096 bytes
 /*H2D*/    VENDOR_ERASE_FLASH,         // erase sector n passed in wValue, sectorsize = 4096 bytes
-/*D2H*/    VENDOR_ERASE_FLASH_ALL     // erase all data partition
+/*D2H*/    VENDOR_ERASE_FLASH_ALL      // erase all data partition
 };
 
 
@@ -681,11 +681,11 @@ int main(int argc, char **argv) {
       if ( (strcmp(argv[1], "?") == 0) || (strcmp(argv[1], "-?") == 0)  || (strcmp(argv[1], "--?") == 0) ) {
 
         fprintf(stderr, "Available options (optional deviceID as first option):\n");
-        fprintf(stderr, "--listdevices\n");      // list all the USB devices and point the one with xmos vendor ID
-        fprintf(stderr, "--resetdevice\n");      // send a DFU command for reseting the device
-        fprintf(stderr, "--xmosload file\n");    // load a new firmware into the xmos flash boot partition
+        fprintf(stderr, "--listdevices          list all usb devices recognized by libusb\n");      // list all the USB devices and point the one with xmos vendor ID
+        fprintf(stderr, "--resetdevice          send a reset/reboot command\n");      // send a DFU command for reseting the device
+        fprintf(stderr, "--xmosload file        upload a firmware into the xmos flash memeory. NO VERIFICATION on file compatibility.\n");    // load a new firmware into the xmos flash boot partition
 #if defined ( BIN2HEX_CMD ) && ( BIN2HEX_CMD > 0 )
-        fprintf(stderr, "--bin2hex  file\n");    // convert a binary file into a text file with hexadecimal presentation grouped by 4 bytes, for C/C++ include
+        fprintf(stderr, "--bin2hex  file        convert a binary file into a text file with hexadecimal values\n");    // convert a binary file into a text file with hexadecimal presentation grouped by 4 bytes, for C/C++ include
 #endif
 #if defined( SAMD_CMD ) && ( SAMD_CMD > 0)
         samd_printcmd();
@@ -710,7 +710,7 @@ int main(int argc, char **argv) {
   }
 
   if (argc > 1) {
-      // extract deviceID forced by user eventually
+      // extract deviceID (serial number) forced by user eventually
       if (strlen(argv[1]) == 1) {
           deviceID = atoi(argv[1]);
           if (argc >= 2) argi=2;
@@ -725,7 +725,7 @@ int main(int argc, char **argv) {
       }
   }
 // special interception only for dac8 executables to force a special binary filename
-#if defined( DAC8STEREO ) || defined( DAC8PRO ) || defined( DAC8PRODSPEVAL )
+#if defined( DAC8STEREO ) || defined( DAC8PRO )
       if (argc > argi) {
           char * testcmd = strstr( argv[argi], "-" );
           if (testcmd != argv[argi]) {
@@ -823,14 +823,14 @@ int main(int argc, char **argv) {
       if (xmosload) {
 #ifdef WINDOWS
           if (BCDdevice >= 0x150) {
-              printf("BCD version >= 150 : use Thesycon DFU utility\n");
+              printf("BCD version >= 150 : Please use Thesycon DFU utility to upgrade XMOS firmware\n");
               exit(-1);
           }
 #endif
           xmos_enterdfu(XMOS_DFU_IF);
           if (BCDdevice >= 0x150) {
               if (devhopen>=0) libusb_close(devh);
-              printf("Device restarting, waiting usb re-enumeration (10seconds max)...\n");
+              printf("Device is restarting, waiting usb re-enumeration (10seconds max)...\n");
               int result;
               printf("#");fflush(stdout);
                 SLEEP(1);
@@ -849,16 +849,18 @@ int main(int argc, char **argv) {
               int oldBCD = BCDdevice;
               xmos_resetdevice(XMOS_DFU_IF);
               if (devhopen>=0) libusb_close(devh);
-              printf("Restarting device, waiting usb enumeration (10seconds max)...\n");
-              SLEEP(2);
-              for (int i=1; i<=5; i++) {
+              printf("Restarting device, waiting usb enumeration (10 seconds max)...\n");
+              printf("#");fflush(stdout);
+              SLEEP(1);
+              for (int i=1; i<=10; i++) {
+                    printf("#");fflush(stdout);
                   result = find_usb_device(deviceID, 0, 1);
-                  SLEEP(2);
                   if (result >=0) break;
+                  SLEEP(1);
               }
               if (result >= 0) {
                    printf("\nDevice upgraded successfully to v%d.%02X\n",BCDdevice>>8,BCDdevice & 0xFF); }
-              else printf("\nDevice not identified after 10sec...\n");
+              else printf("\nDevice not found after 10sec...\n");
           }
       }
 

@@ -10,8 +10,6 @@ const unsigned int target_firmware_bin[] = {
 #include "../dac8/dac8pro.bin.h"
 #elif defined( DAC8PRO32 )
 #error "no more DAC8PRO32"
-#elif defined( DAC8PRODSPEVAL )
-#include "../dac8/dac8prodspeval.bin.h"
 #else
 //#warning "NO FIRMWARE FILE INCLUDED IN TOOL"
 #endif
@@ -19,7 +17,7 @@ const unsigned int target_firmware_bin[] = {
 
 
 const unsigned int firmware_141_bin[] = {
-#if defined( DAC8PRO ) || defined( DAC8PRODSPEVAL )
+#if defined( DAC8PRO )
 #include "../dac8/dac8pro_141.bin.h"
 #elif defined(DAC8STEREO)
 #include "../dac8/dac8stereo_141.bin.h"
@@ -44,7 +42,6 @@ static const int tableFreq[8] = { 44100, 48000, 88200, 96000, 176400,192000, 352
 // show some key information about the dac
 void getDacStatus(){
     printf("printing dac status:\n");
-    unsigned char data[64];
     libusb_control_transfer(devh, VENDOR_REQUEST_FROM_DEV,
             VENDOR_GET_DEVICE_INFO, 0, 0, data, 64, 0);
     printf("DAC mode            = 0x%X ", data[0]);
@@ -72,11 +69,14 @@ void getDacStatus(){
     if (data[10] & 0x80) printf("dsp capability\n"); else printf("\n");
     printf("usb vendor ID       = 0x%4X\n", (data[11]+(data[12]<<8)) );
     printf("usb product ID      = 0x%4X\n", (data[13]+(data[14]<<8)) );
-    int maxFreq = (data[15]+(data[16]<<8)+(data[17]<<16)+(data[18]<<24));
+    int maxFreq = loadInt(15);//(data[15]+(data[16]<<8)+(data[17]<<16)+(data[18]<<24));
     printf("maximum frequency   = %d\n",    maxFreq );
-    int progress = (data[19]+(data[20]<<8)+(data[21]<<16)+(data[22]<<24));
+    int progress = loadInt(19); //(data[19]+(data[20]<<8)+(data[21]<<16)+(data[22]<<24));
     printf("front panel status  = %d ",    progress );
+#if defined( SAMD_CMD ) && (SAMD_CMD > 0)
     printfwstatus(progress);
+#endif
+	//DSP related section
     int maxTask = data[24];
     printf("maximum dsp tasks   = %d\n",    (maxTask) );
     int maxDsp = 100000000/i2sfreq;
@@ -85,10 +85,10 @@ void getDacStatus(){
         printf("decimation factor   = %d\n",    data[23] );
         for (int i=0; i<= maxTask; i++)
             if (i != maxTask)
-                 printf("dsp %d: instructions = %d\n", i+1, (data[25+i+i]+(data[25+i+i+1]<<8)) );
+                 printf("dsp %d: instructions = %d\n", i+1, loadShort(25+i+i));//(data[25+i+i]+(data[25+i+i+1]<<8)) );
             else {
-                int maxInst = (data[25+i+i]+(data[25+i+i+1]<<8));
-                printf("maxi   instructions = %d / %d = %d%%fs\n", maxInst , maxDsp, (int)(maxInst*100.0/(float)maxDsp) );  }
+                int maxInst = loadShort(25+i+i);//(data[25+i+i]+(data[25+i+i+1]<<8));
+                printf("max    instructions = %d / %d = %d%%fs\n", maxInst , maxDsp, (int)(maxInst*100.0/(float)maxDsp) );  }
             }
 #if defined( SAMD_CMD ) && (SAMD_CMD > 0)
     if (progress) fwprogress(0);    // display a simple text message about the dac status from fw perspective
@@ -98,10 +98,10 @@ void getDacStatus(){
 
 
 void dac_printcmd() {
-    fprintf(stderr, "--dacstatus\n");        // return the main registers providing informations on the dac and data stream status
-    fprintf(stderr, "--dacmode  val\n");     // set the dac mode with the value given. front panel informed
-    fprintf(stderr, "--dacmute\n");          // set the dac in mute till unmute
-    fprintf(stderr, "--dacunmute\n");        // unmute the dac
+    fprintf(stderr, "--dacstatus            provide details on the DAC internal statuses\n");        // return the main registers providing informations on the dac and data stream status
+    fprintf(stderr, "--dacmode  val         change de DAC mode 0 PureUSB, 1 USB/AES, 2 PureAES\n");     // set the dac mode with the value given. front panel informed
+    fprintf(stderr, "--dacmute              force 0 on I2S bus to DAC, low level command, front panel not informed\n");          // set the dac in mute till unmute
+    fprintf(stderr, "--dacunmute            restore normal mode of operation\n");        // unmute the dac
 }
 
 int dac_testcmd(int argc, char **argv, int argi) {
@@ -113,6 +113,9 @@ int dac_testcmd(int argc, char **argv, int argi) {
     if (strcmp(argv[argi], "--dacmode") == 0) {
         if (argv[argi+1]) {
             param1 = atoi(argv[argi+1]);
+			if (param1>2) {
+				fprintf(stderr, "Bad value specified for dacmode option\n");
+				exit (-1); }
         } else {
           fprintf(stderr, "No value specified for dacmode option\n");
           exit (-1); }
@@ -188,9 +191,13 @@ int search_dac8_product(char * filename){
 
     printf("Searching OKTO Research product on the USB ports ...");
     int r = find_usb_device(deviceID, 0, 1);
-    if (BCDdevice>=0x0150) {
-        printf("found DAC8 product v%d.%02X\n", BCDdevice>>8,BCDdevice & 0xFF);
-        return 0;}
+#ifdef WINDOWS
+	  if (BCDdevice >= 0x150) {
+		printf("found DAC8 product v%d.%02X\n", BCDdevice>>8,BCDdevice & 0xFF);
+		printf("BCD version >= 150 : Please use Thesycon DFU utility to upgrade XMOS firmware\n");
+		exit(-1);
+	  }
+#endif
     if (r < 0)  {
             fprintf(stderr, "\nCould not find or access a valid DAC8 product\n"
                             "please try uninstalling any existing drivers.\n\n");
@@ -242,13 +249,14 @@ entry:
 
     int result = search_dac8_product(filename);
 
+#ifdef WINDOWS
     if (BCDdevice >= 0x150) {
         printf("\nThis tool cannot be used to upgrade DAC8 version >= 1.50");
         printf("\nPlease use the new Thesycon DFU utility made for OKTO Research\n\n");
         libusb_exit(NULL);
         exit(-1);
     }
-
+#endif
     if (repeat == 0) {
 
         BCDprev = BCDdevice;
@@ -274,8 +282,6 @@ entry:
 			#elif defined ( DAC8STEREO )
 			char * test = strstr(Product, "DAC8STEREO");
 			if (test != Product) test = strstr(Product, "DACSTEREO");   //added 20230429 to cope with some products in the field
-            #elif defined ( DAC8PRODSPEVAL )
-            char * test = strstr(Product, "DAC8PRO");
 			#else
 			char * test = NULL;
 			#endif
@@ -357,10 +363,10 @@ entry:
         printf("Device version v%d.%02X\n",BCDdevice>>8,BCDdevice & 0xFF);
 #if defined( WIN32 )
         if (BCDdevice > 0x141) {
-            if (BCDdevice < 0x0150) show_fp_status();
+            if (BCDdevice < 0x0150) show_fp_status();	//Bizarre isnt it >= instead
             else {
-                printf("please now wait 40 seconds for font-panel firmware upgrade... Do not power off!\n");
-                for (int i=0; i< 40; i++) {
+                printf("please now wait max 60 seconds for font-panel firmware upgrade... Do not power off!\n");
+                for (int i=0; i< 60; i++) {
                     printf("#");fflush(stdout);
                     SLEEP(1);   }
                 printf("\nUpgrade process completed. Press Volume knob to display new front panel menus.\n");

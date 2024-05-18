@@ -3,7 +3,10 @@
 all:	xmosusb testlibusb Makefile dac8
 	@echo xmosusb and testlibusb and dac8 uptodate
 	
-dac8:	xmosusb Makefile dac8pro dac8stereo dac8prodspeval dacfabrice
+xmos:	xmosusb testlibusb Makefile
+	@echo xmosusb and testlibusb uptodate
+	
+dac8:	xmosusb Makefile dac8pro dac8stereo dacfabrice
 	@echo dac8 done
 
 LIBUSB = `pkg-config --libs --cflags libusb-1.0`
@@ -26,28 +29,19 @@ testlibusb:	../src/testlibusb.c Makefile
 	./xmosusb --bin2hex ../dac8/dac8stereo.bin
 	@echo dac8stereo.bin.h generated sucessfully
 
-../dac8/dac8prodspeval.bin.h:	../dac8/dac8prodspeval.bin 
-	./xmosusb --bin2hex ../dac8/dac8prodspeval.bin
-	@echo dac8prodspeval.bin.h generated sucessfully
-	
 ../dac8/dacfabrice.bin.h:	../dac8/dacfabrice.bin 
 	./xmosusb --bin2hex ../dac8/dacfabrice.bin
 	@echo dacfabrice.bin.h generated sucessfully
 	
 dac8pro: ../dac8/dac8pro.bin.h xmosusb
-	g++ -o dac8pro    ../src/xmosusb.cpp -I../src $(LIBUSB) -DDAC8PRO -DDSP_CMD=0
+	g++ -o dac8pro    ../src/xmosusb.cpp -I../src $(LIBUSB) -DDAC8PRO
 	@echo dac8pro compiled sucessfully
 	@cp dac8pro    ../dac8/utilities/rpi
 
 dac8stereo:	../dac8/dac8stereo.bin.h xmosusb
-	g++ -o dac8stereo ../src/xmosusb.cpp -I../src $(LIBUSB) -DDAC8STEREO -DDSP_CMD=0
+	g++ -o dac8stereo ../src/xmosusb.cpp -I../src $(LIBUSB) -DDAC8STEREO
 	@echo dac8stereo compiled sucessfully
 	@cp dac8stereo ../dac8/utilities/rpi
-
-dac8prodspeval:	../dac8/dac8prodspeval.bin.h xmosusb
-	g++ -o dac8prodspeval ../src/xmosusb.cpp -I../src $(LIBUSB) -DDAC8PRODSPEVAL
-	@echo dac8prodspeval compiled sucessfully
-	@cp dac8prodspeval ../dac8/utilities/rpi
 
 dacfabrice:	../dac8/dacfabrice.bin.h xmosusb
 	g++ -o dacfabrice ../src/xmosusb.cpp -I../src $(LIBUSB) -DDACFABRICE

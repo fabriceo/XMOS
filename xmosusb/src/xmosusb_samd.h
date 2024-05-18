@@ -23,9 +23,9 @@ int samd_download(unsigned int value, unsigned int block_num, unsigned int size,
 }
 
 
-static inline int getIntFromBuffer(unsigned char buf[], int idx) {
-    return  buf[idx] | (buf[idx+1]<<8) | (buf[idx+2]<<16) | (buf[idx+3]<<24);
-}
+//static inline int getIntFromBuffer(unsigned char buf[], int idx) {
+//    return  buf[idx] | (buf[idx+1]<<8) | (buf[idx+2]<<16) | (buf[idx+3]<<24);
+//}
 
 enum fwsteps_e { fw_not_started, fw_starting, fw_checking, fw_checkfailed, fw_obsolete, fw_running,
                  fw_startflashing, fw_bootloader, fw_waitbootloader, fw_version, fw_init, fw_erase,
@@ -119,14 +119,19 @@ void printfwstatus(int status){
 int fwstatus;
 // display the samd update progress (not finished, especially on xmos side)
 void fwprogress(int exitstate){
-    unsigned char data[64];
+    //unsigned char data[64];
     int loop = 1;
     int i=0;
+	int result;
     while (loop) {
-        libusb_control_transfer(devh, VENDOR_REQUEST_FROM_DEV,
-                VENDOR_GET_DEVICE_INFO, 0, 0, data, 64, 0);
+        result = libusb_control_transfer(devh, VENDOR_REQUEST_FROM_DEV,
+					VENDOR_GET_DEVICE_INFO, 0, 0, data, 64, 0);
+					if (result<0) {
+						    printf("\n");
+							return;
+					}
         static int old = -100;
-        int progress = data[19]+(data[20]<<8)+(data[21]<<16)+(data[22]<<24);
+        int progress = loadInt(19); //data[19]+(data[20]<<8)+(data[21]<<16)+(data[22]<<24);
         if (progress <= 0) fwstatus = progress;
         if (progress != old) {
             old = progress;
@@ -158,12 +163,12 @@ void fwprogress(int exitstate){
 }
 
 void samd_printcmd() {
-    fprintf(stderr, "--samdload file\n");    // NOT IMPLEMENTED load the front panel flash with a samd binary program and reboot
-    fprintf(stderr, "--samdreflash\n");      // re-initiate flashing the front panel firmware with the binary file embeded in xmos source code.
-    fprintf(stderr, "--samdbootloader\n");   // enters samd into bootloader mode, to prepare for erasing and downloading new fw
+    fprintf(stderr, "--samdload file        load file in SAMD device (front panel)\n");    // load the front panel flash with a samd binary program and reboot
+    fprintf(stderr, "--samdreflash          load embded firmware in SAMD device(front panel)\n");      // re-initiate flashing the front panel firmware with the binary file embeded in xmos source code.
+    fprintf(stderr, "--samdbootloader       enter SAMD in bootloader\n");   // enters samd into bootloader mode, to prepare for erasing and downloading new fw
     fprintf(stderr, "--samdbootloaderversion\n");      // provide the text received when sending V# to the bootloader
-    fprintf(stderr, "--samdreset\n");        // reinitialize dac application and cycle reset front panel
-    fprintf(stderr, "--samderase\n");        // erase all samd flash
+    fprintf(stderr, "--samdreset            reset cycle the SAMD device (front panel)\n");        // reinitialize dac application and cycle reset front panel
+    fprintf(stderr, "--samderase            erase SAMD device flash memory (front panel)\n");        // erase all samd flash
 }
 
 int samd_testcmd(int argc, char **argv, int argi) {
@@ -196,29 +201,34 @@ int samd_testcmd(int argc, char **argv, int argi) {
 int samd_executecmd() {
     int res;
     if (samdload) {
+          res = vendor_to_dev(VENDOR_AUDIO_MUTE,0,0);
+		  if (res<0) return 0;
           printf("muting dac\n");
-          vendor_to_dev(VENDOR_AUDIO_MUTE,0,0);
           fwprogress(fw_init);  // wait for status running or init (bootloader)
           if (fwstatus != -fw_init) {
               printf("force bootload\n");
               res = vendor_from_dev(VENDOR_SAMD_DOWNLOAD, fw_bootloader, 0, data, 4);
+			  if (res<0) return 0;
               fwprogress(fw_init); }
           printf("force erase\n");
           res = vendor_from_dev(VENDOR_SAMD_DOWNLOAD, fw_erase, 0, data, 4);
           if (res == 4) {
-              res = getIntFromBuffer(data, 0);
+              res = loadInt(0);	//getIntFromBuffer(data, 0);
               if (res == -fw_erase) {
-                  printf("get version\n");
+                  printf("firmware erased. Getting version\n");
                   res = vendor_from_dev(VENDOR_SAMD_DOWNLOAD, fw_version, 0, data, 64);
                   if (res != 4) {
                       samdloadbinfile(XMOS_DFU_IF, filename);
                       printf("restarting\n");
                       res = vendor_from_dev(VENDOR_SAMD_DOWNLOAD, fw_starting, 0, data, 4);
                       fwprogress(fw_running);
+					  //TODO now the xmos is reset after flashing the front panel. Requires some changes
                   }
               }
-          } else
+          } else {
               printf("cant erase flash ...\n");
+			  return 0;
+		  }
           printf("unmuting dac\n");
           vendor_to_dev(VENDOR_AUDIO_UNMUTE,0,0);
       }
