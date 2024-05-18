@@ -16,7 +16,7 @@ const unsigned int target_firmware_bin[] = {
 };
 
 
-const unsigned int firmware_141_bin[] = {
+const unsigned int firmware_141_bin[] =  {
 #if defined( DAC8PRO )
 #include "../dac8/dac8pro_141.bin.h"
 #elif defined(DAC8STEREO)

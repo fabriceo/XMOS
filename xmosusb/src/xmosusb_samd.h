@@ -32,7 +32,7 @@ enum fwsteps_e { fw_not_started, fw_starting, fw_checking, fw_checkfailed, fw_ob
                  fw_block, fw_completed, fw_error, fw_faulty };
 
 // send many commands to download a new samd firmware by using 64bytes chunk.
-int samdloadbinfile(unsigned int interface, char *file) {
+int samdloadbinfile(unsigned int interface, char *file)  {
   int i = 0;
   FILE* inFile = NULL;
   int image_size = 0;

@@ -141,8 +141,8 @@ void dspReadHeader(){
         printf("freq max     = %d (%d)\n",header.freqMax,dspTableFreq[header.freqMax]);
     }
 }
-
-void dsp_printcmd() {
+ 
+void dsp_printcmd()  {
     fprintf(stderr, "--dspload  file        load a dsp binary file (opcodes) into DSP memory area.\n");    // send the file binary content (dsp opcode) to the xmos dsp working memory
     fprintf(stderr, "--dspwrite slot        save the DSP memory area to permanent flash location.\n");    // save xmos dsp memory content to flash slot N (1..15)
     fprintf(stderr, "--dspread  slot        load DSP memory with a program stored in flash location.\n");    // load xmos dsp memory content with flash slot 1..15

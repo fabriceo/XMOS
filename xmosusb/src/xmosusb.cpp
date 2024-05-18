@@ -84,7 +84,7 @@ static libusb_device_handle *devh = NULL;
 
 #define MINIDSP_TEST                0x27520049
 
-unsigned vidpidList[] = {
+unsigned vidpidList[] =  {
         XMOS_XCORE_AUDIO_AUDIO2_PID,
         XMOS_DXIO,
         XMOS_L1_AUDIO2_PID,

@@ -3,7 +3,7 @@
 
 
 // used to convert a binary file like the atmel studio code generated for the front panel, into a c header file .h
-int bin2hex(char *file){
+int bin2hex(char *file) {
     FILE* inFile = NULL;
 
     int bin_size = 0;
