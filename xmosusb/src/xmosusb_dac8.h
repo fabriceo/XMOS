@@ -88,6 +88,7 @@ void getDacStatus(){
                  printf("dsp %d: instructions = %d\n", i+1, loadShort(25+i+i));//(data[25+i+i]+(data[25+i+i+1]<<8)) );
             else {
                 int maxInst = loadShort(25+i+i);//(data[25+i+i]+(data[25+i+i+1]<<8));
+                maxDsp = loadShort(27+i+i);
                 printf("max    instructions = %d / %d = %d%%fs\n", maxInst , maxDsp, (int)(maxInst*100.0/(float)maxDsp) );  }
             }
 #if defined( SAMD_CMD ) && (SAMD_CMD > 0)

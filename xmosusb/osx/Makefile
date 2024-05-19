@@ -12,12 +12,13 @@ LIBUSB = -I/usr/local/Cellar/libusb/1.0.26/include/libusb-1.0 /usr/local/Cellar/
 
 xmosusb:	../src/xmosusb.cpp ../src/xmosusb_samd.h ../src/xmosusb_dsp.h ../src/xmosusb_bin2hex.h ../src/xmosusb_dac8.h
 	@echo compiling xmosusb
-	g++ -o xmosusb ../src/xmosusb.cpp -I../src $(LIBUSB)
-	@echo xmosusb compiled sucessfully
+	g++ -o xmosusb ../src/xmosusb.cpp -I../src $(LIBUSB) -arch x86_64
+	cp xmosusb /usr/local/bin
+	@echo xmosusb compiled sucessfully and copied in /usr/local/bin
 	
 testlibusb:	../src/testlibusb.c
 	@echo compiling testlibusb
-	gcc  -o testlibusb ../src/testlibusb.c $(LIBUSB)
+	gcc  -o testlibusb ../src/testlibusb.c $(LIBUSB) -arch x86_64
 	@echo testlibusb compiled sucessfully
 	
 ../dac8/dac8pro.bin.h:	../dac8/dac8pro.bin 
@@ -33,17 +34,17 @@ testlibusb:	../src/testlibusb.c
 	@echo dacfabrice.bin.h generated sucessfully
 
 dac8pro: ../dac8/dac8pro.bin.h xmosusb
-	g++ -o dac8pro    ../src/xmosusb.cpp -I../src $(LIBUSB) -DDAC8PRO
+	g++ -o dac8pro    ../src/xmosusb.cpp -I../src $(LIBUSB) -arch x86_64 -DDAC8PRO
 	@echo dac8pro compiled sucessfully
 	@cp dac8pro    ../dac8/utilities/osx
 
 dac8stereo:	../dac8/dac8stereo.bin.h xmosusb
-	g++ -o dac8stereo ../src/xmosusb.cpp -I../src $(LIBUSB) -DDAC8STEREO
+	g++ -o dac8stereo ../src/xmosusb.cpp -I../src $(LIBUSB) -arch x86_64 -DDAC8STEREO 
 	@echo dac8stereo compiled sucessfully
 	@cp dac8stereo ../dac8/utilities/osx
 
 dacfabrice:	../dac8/dacfabrice.bin.h xmosusb
-	g++ -o dacfabrice ../src/xmosusb.cpp -I../src $(LIBUSB) -DDACFABRICE
+	g++ -o dacfabrice ../src/xmosusb.cpp -I../src $(LIBUSB) -arch x86_64 -DDACFABRICE
 	@echo dacfabrice compiled sucessfully
 
 
