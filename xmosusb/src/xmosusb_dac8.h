@@ -39,22 +39,53 @@ unsigned int dacmode  = 0;
 
 static const int tableFreq[8] = { 44100, 48000, 88200, 96000, 176400,192000, 352800,384000 };
 
+static void printConfig(unsigned int conf){
+    printf("%dhz, ",tableFreq[conf & 0b111]);
+    switch (conf & 0b11000) {
+    case 0b00000: printf("PCM, "); break;
+    case 0b01000: printf("DSD, "); break;
+    default: printf("DoP, "); break;
+    }
+    switch (conf & 0b1100000) {
+    case 0b0000000: printf("16b\n"); break;
+    case 0b0100000: printf("24b\n"); break;
+    default: printf("32b\n"); break;
+    }
+}
 // show some key information about the dac
 void getDacStatus(){
     printf("printing dac status:\n");
     libusb_control_transfer(devh, VENDOR_REQUEST_FROM_DEV,
             VENDOR_GET_DEVICE_INFO, 0, 0, data, 64, 0);
-    printf("DAC mode            = 0x%X ", data[0]);
-    switch (data[0]& 7) {
-    case 0: printf("pure usb"); break; case 2: printf("usb-aes"); break; case 3: printf("pure aes"); break;
-    case 4: printf("pure rpi-usb"); break; case 6: printf("rpi-usb/aes"); break; case 7: printf("pure aes"); break; }
-    if (data[0] & 8) printf(" dsp\n"); else printf("\n");
-    int i2sfreq = tableFreq[data[1] & 7];
-    printf("I2S Audio config    = 0x%2X (%d)\n", data[1], tableFreq[data[1] & 7]);
-    printf("USB Audio config    = 0x%2X (%d)\n", data[2], tableFreq[data[2] & 7]);
+    printf("usb vendor ID       = 0x%4X\n", (data[11]+(data[12]<<8)) );
+    printf("usb product ID      = 0x%4X\n", (data[13]+(data[14]<<8)) );
+    printf("xmos BCD version    = %d.%2X", data[10] & 0x3F,data[9]);
+    if (data[10] & 0x80) printf(" DSP enabled\n"); else printf("\n");
+    int maxFreq = loadInt(15);
     printf("front panel version = %d\n",    data[4]);
+    int progress = loadInt(19);
+    printf("front panel status  = %d ",    progress );
+#if defined( SAMD_CMD ) && (SAMD_CMD > 0)
+    printfwstatus(progress);
+#endif
+    printf("maximum frequency   = %dhz\n\n",    maxFreq );
+    printf("DAC mode            = 0x%X ", data[0]);
+    switch (data[0] & 0b1100111) {
+    case 0: printf("PureUSB"); break;
+    case 2: printf("USB/AES"); break;
+    case 3: printf("PureAES"); break;
+    case 4: printf("RPI PureUSB");  break;
+    case 6: printf("RPI USB/AES");  break;
+    case 7: printf("PureAES"); break;
+    case 0b0100011: printf("PureAES_2"); break;
+    case 0b1000011: printf("PureAES_3"); break;
+    case 0b1100011: printf("PureAES_4"); break; }
+    if (data[0] & 8) printf(" + DSP\n"); else printf("\n");
+    int i2sfreq = tableFreq[data[1] & 7];
+    printf("I2S Audio config    = 0x%2X ", data[1]); printConfig(data[1]);
+    printf("USB Audio config    = 0x%2X ", data[2]); printConfig(data[2]);
     printf("Sound presence      = 0x%2X\n", data[5]);
-    printf("trigger             = 0x%2X\n", data[6]);
+    printf("trigger/sleep       = 0x%2X\n", data[6]);
     short vol= (signed char)data[7];
     if (vol & 128)
         printf("usb volume          = muted (%ddB)\n", -(vol & 127) );
@@ -65,31 +96,20 @@ void getDacStatus(){
         printf("front panel volume  = muted (%ddB)\n", -(vol & 127) );
     else
         printf("front panel volume  = %ddB\n", -vol );
-    printf("xmos BCD version    = %d.%2X", data[10] & 0x7F,data[9]);
-    if (data[10] & 0x80) printf("dsp capability\n"); else printf("\n");
-    printf("usb vendor ID       = 0x%4X\n", (data[11]+(data[12]<<8)) );
-    printf("usb product ID      = 0x%4X\n", (data[13]+(data[14]<<8)) );
-    int maxFreq = loadInt(15);//(data[15]+(data[16]<<8)+(data[17]<<16)+(data[18]<<24));
-    printf("maximum frequency   = %d\n",    maxFreq );
-    int progress = loadInt(19); //(data[19]+(data[20]<<8)+(data[21]<<16)+(data[22]<<24));
-    printf("front panel status  = %d ",    progress );
-#if defined( SAMD_CMD ) && (SAMD_CMD > 0)
-    printfwstatus(progress);
-#endif
 	//DSP related section
     int maxTask = data[24];
-    printf("maximum dsp tasks   = %d\n",    (maxTask) );
+    printf("\nmaximum DSP tasks   = %d\n",    (maxTask) );
     int maxDsp = 100000000/i2sfreq;
     if (maxTask) {
-        printf("DSP program number  = %d\n",    data[3]);
-        printf("decimation factor   = %d\n",    data[23] );
+        printf("DSP program number  = %d\n", data[3]);
+        printf("decimation factor   = %d\n", data[23] );
         for (int i=0; i<= maxTask; i++)
             if (i != maxTask)
-                 printf("dsp %d: instructions = %d\n", i+1, loadShort(25+i+i));//(data[25+i+i]+(data[25+i+i+1]<<8)) );
+                 printf("DSP Core %d: load    = %d\n", i+1, loadShort(25+i+i));
             else {
-                int maxInst = loadShort(25+i+i);//(data[25+i+i]+(data[25+i+i+1]<<8));
+                int maxInst = loadShort(25+i+i);
                 maxDsp = loadShort(27+i+i);
-                printf("max    instructions = %d / %d = %d%%fs\n", maxInst , maxDsp, (int)(maxInst*100.0/(float)maxDsp) );  }
+                printf("DSP max load        = %d / %d = %d%%fs\n", maxInst , maxDsp, (int)(maxInst*100.0/(float)maxDsp) );  }
             }
 #if defined( SAMD_CMD ) && (SAMD_CMD > 0)
     if (progress) fwprogress(0);    // display a simple text message about the dac status from fw perspective
