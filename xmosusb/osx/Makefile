@@ -4,7 +4,7 @@ all:	testlibusb xmosusb Makefile
 xmos:	xmosusb Makefile
 	@echo xmosusb done
 
-dac8:	xmosusb Makefile dac8pro dac8stereo dacfabrice
+dac8:	xmosusb Makefile dac8pro dac8stereo
 	@echo dac8 done
 
 #libusb is installed with brew and the statically linked. no need for dylib file or external dependency.
@@ -29,10 +29,6 @@ testlibusb:	../src/testlibusb.c
 	./xmosusb --bin2hex ../dac8/dac8stereo.bin
 	@echo dac8stereo.bin.h generated sucessfully
 
-../dac8/dacfabrice.bin.h:	../dac8/dacfabrice.bin 
-	./xmosusb --bin2hex ../dac8/dacfabrice.bin
-	@echo dacfabrice.bin.h generated sucessfully
-
 dac8pro: ../dac8/dac8pro.bin.h xmosusb
 	g++ -o dac8pro    ../src/xmosusb.cpp -I../src $(LIBUSB) -arch x86_64 -DDAC8PRO
 	@echo dac8pro compiled sucessfully
@@ -42,10 +38,6 @@ dac8stereo:	../dac8/dac8stereo.bin.h xmosusb
 	g++ -o dac8stereo ../src/xmosusb.cpp -I../src $(LIBUSB) -arch x86_64 -DDAC8STEREO 
 	@echo dac8stereo compiled sucessfully
 	@cp dac8stereo ../dac8/utilities/osx
-
-dacfabrice:	../dac8/dacfabrice.bin.h xmosusb
-	g++ -o dacfabrice ../src/xmosusb.cpp -I../src $(LIBUSB) -arch x86_64 -DDACFABRICE
-	@echo dacfabrice compiled sucessfully
 
 
 

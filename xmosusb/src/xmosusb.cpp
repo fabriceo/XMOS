@@ -413,7 +413,7 @@ int dfu_getStatus(unsigned int interface, unsigned char *state, unsigned int *ti
 int dfu_download(unsigned int interface, unsigned int block_num, unsigned int size, unsigned char *data) {
   //printf("... Downloading block number %d size %d\r", block_num, size);
     unsigned int numBytes = 0;
-    numBytes = libusb_control_transfer(devh, DFU_REQUEST_TO_DEV, XMOS_DFU_DNLOAD, block_num, interface, data, size, 0);
+    numBytes = libusb_control_transfer(devh, DFU_REQUEST_TO_DEV, /* XMOS_DFU_DNLOAD */ DFU_DNLOAD, block_num, interface, data, size, 0);
     return numBytes;
 }
 
@@ -471,20 +471,20 @@ int write_dfu_image(unsigned int interface, char *file, int printmode, const uns
     if (file) fread(data, 1, block_size, inFile);
     else
         for (int j=0; j<16; j++) storeInt(j*4,firm[i*16+j]);
-    if (i == 0) printf("Preparing flash memory (up to 10 seconds...)\n");
+    if (i == 0) printf("Preparing flash memory (up to 10 seconds...) for DFU interface %d\n",interface);
     if (i==1) printf("Downloading data...\n");
     int numbytes = dfu_download(interface, dfuBlockCount, block_size, data);
     if (numbytes != 64) {
         printf("Unexpected Error: dfudownload command returned an error %d at block %d.\n",numbytes, dfuBlockCount);
         if( dfuBlockCount == 0 ) {
-            printf("USB Host timeout after 5 seconds while device is erasing flash memory needing 8 seconds.\n");
+            printf("USB Host timeout after 5 seconds while device is erasing flash memory needing 10 seconds.\n");
             printf("The DAC8 is now awaiting an incomplete USB transaction and requires a gentle power OFF and then power ON.\n");
             printf("Your platform configuration does not seem to be compatible with this upgrade process.\n");
 #ifdef WINDOWS
             printf("Please consider unistalling any device driver and reinstalling winusb (with reboot)\n");
             printf("Using Linux Mint (booted from an USB key) provides an easier solution.\n");
 #else
-            printf("Please consider installing another version for libusb or testing on other USB ports/hubs\n");
+            printf("Please try installing a newer version for libusb or testing on other USB ports/hubs\n");
 #endif
             exit(-1);
         } else

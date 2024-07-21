@@ -96,21 +96,24 @@ void getDacStatus(){
         printf("front panel volume  = muted (%ddB)\n", -(vol & 127) );
     else
         printf("front panel volume  = %ddB\n", -vol );
+    printf("\ndecimation factor   = %d\n", data[23] );
 	//DSP related section
     int maxTask = data[24];
-    printf("\nmaximum DSP tasks   = %d\n",    (maxTask) );
+    printf("maximum DSP tasks   = %d\n",    (maxTask) );
     int maxDsp = 100000000/i2sfreq;
     if (maxTask) {
         printf("DSP program number  = %d\n", data[3]);
-        printf("decimation factor   = %d\n", data[23] );
         for (int i=0; i<= maxTask; i++)
             if (i != maxTask)
                  printf("DSP Core %d: load    = %d\n", i+1, loadShort(25+i+i));
             else {
                 int maxInst = loadShort(25+i+i);
                 maxDsp = loadShort(27+i+i);
-                printf("DSP max load        = %d / %d = %d%%fs\n", maxInst , maxDsp, (int)(maxInst*100.0/(float)maxDsp) );  }
+                printf("DSP max load        = %d / %d = %d%%fs\n", maxInst , maxDsp, (int)(maxInst*100.0/(float)maxDsp) );
+                int maxsize = loadShort(29+i+i);
+                printf("DSP mem available   = %d words\n",maxsize);
             }
+    }
 #if defined( SAMD_CMD ) && (SAMD_CMD > 0)
     if (progress) fwprogress(0);    // display a simple text message about the dac status from fw perspective
 #endif
@@ -176,12 +179,15 @@ int dac_executecmd() {
 
 
 void show_fp_status(){
-    printf("Monitoring front panel firmware upgrade (up to 40 seconds):\n");
+    printf("Monitoring front panel firmware upgrade (up to 60 seconds):\n");
 static int oldprogress;
 int dashed = 0;
 while(1) {
-    libusb_control_transfer(devh, VENDOR_REQUEST_FROM_DEV,
+    int result = libusb_control_transfer(devh, VENDOR_REQUEST_FROM_DEV,
         VENDOR_GET_DEVICE_INFO, 0, 0, data, 64, 0);
+    if (result<0) {
+        fflush(stdout); printf("\n"); return;
+    }
 
     int progress = loadInt(19);//data[19]+(data[20]<<8)+(data[21]<<16)+(data[22]<<24);
     if (progress != oldprogress) {
@@ -361,8 +367,29 @@ entry:
     }
 
     printf("Upgrading USB firmware, do not disconnect...\n");
-    xmos_enterdfu(XMOS_DFU_IF);
-    SLEEP(1);
+    if (XMOS_DFU_IF) {
+        //enterring here if the current DFU interface is not 0 meaning old version of DFU firmware
+        xmos_enterdfu(XMOS_DFU_IF);
+        if (BCDdevice >= 0x150) {
+            if (devhopen>=0) libusb_close(devh);
+            printf("Device is restarting, waiting usb re-enumeration (10seconds max)...\n");
+            SLEEP(1);
+            int result;
+            printf("#");fflush(stdout);
+              SLEEP(1);
+              for (int i=1; i<=10; i++) {
+                  printf("#");fflush(stdout);
+                  if ((result = find_usb_device(deviceID, 0, 1)) >= 0) break;
+                  SLEEP(1);
+              }
+              if (result < 0) {
+                  fprintf(stderr, "\nUSB DFU Device not identified after 10sec...\n");
+                  exit(-1);
+              }
+              printf("Device restarted, new DFU interface = %d\n",XMOS_DFU_IF);
+        } else
+            SLEEP(1);
+    }
     result = write_dfu_image(XMOS_DFU_IF, filename, 1, target_firmware_bin, sizeof(target_firmware_bin) );
     if (result >= 0) {
         xmos_resetdevice(XMOS_DFU_IF);
