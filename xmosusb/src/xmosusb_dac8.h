@@ -186,7 +186,9 @@ while(1) {
     int result = libusb_control_transfer(devh, VENDOR_REQUEST_FROM_DEV,
         VENDOR_GET_DEVICE_INFO, 0, 0, data, 64, 0);
     if (result<0) {
-        fflush(stdout); printf("\n"); return;
+        fflush(stdout); printf("\n");
+        libusb_close(devh);
+        return;
     }
 
     int progress = loadInt(19);//data[19]+(data[20]<<8)+(data[21]<<16)+(data[22]<<24);
@@ -227,7 +229,7 @@ int search_dac8_product(char * filename){
 #endif
     if (r < 0)  {
             fprintf(stderr, "\nCould not find or access a valid DAC8 product\n"
-                            "please try uninstalling any existing drivers.\n\n");
+                            "please try uninstalling any existing audio drivers.\n\n");
             waitKey();
             libusb_exit(NULL);
             exit(-1); }
@@ -279,7 +281,7 @@ entry:
 #ifdef WINDOWS
     if (BCDdevice >= 0x150) {
         printf("\nThis tool cannot be used to upgrade DAC8 version >= 1.50");
-        printf("\nPlease use the new Thesycon DFU utility made for OKTO Research\n\n");
+        printf("\nPlease use the Thesycon DFU utility made for OKTO Research\n\n");
         libusb_exit(NULL);
         exit(-1);
     }
@@ -367,29 +369,25 @@ entry:
     }
 
     printf("Upgrading USB firmware, do not disconnect...\n");
-    if (XMOS_DFU_IF) {
-        //enterring here if the current DFU interface is not 0 meaning old version of DFU firmware
-        xmos_enterdfu(XMOS_DFU_IF);
-        if (BCDdevice >= 0x150) {
-            if (devhopen>=0) libusb_close(devh);
-            printf("Device is restarting, waiting usb re-enumeration (10seconds max)...\n");
-            SLEEP(1);
-            int result;
-            printf("#");fflush(stdout);
+    xmos_enterdfu(XMOS_DFU_IF);
+    if (BCDdevice >= 0x150) {
+        if (devhopen>=0) libusb_close(devh);
+        printf("Device is restarting, waiting usb re-enumeration (10seconds max)...\n");
+        int result;
+        printf("#");fflush(stdout);
+          SLEEP(1);
+          for (int i=1; i<=10; i++) {
+              printf("#");fflush(stdout);
+              if ((result = find_usb_device(deviceID, 0, 1)) >= 0) break;
               SLEEP(1);
-              for (int i=1; i<=10; i++) {
-                  printf("#");fflush(stdout);
-                  if ((result = find_usb_device(deviceID, 0, 1)) >= 0) break;
-                  SLEEP(1);
-              }
-              if (result < 0) {
-                  fprintf(stderr, "\nUSB DFU Device not identified after 10sec...\n");
-                  exit(-1);
-              }
-              printf("Device restarted, new DFU interface = %d\n",XMOS_DFU_IF);
-        } else
-            SLEEP(1);
+          }
+          if (result < 0) {
+              fprintf(stderr, "\nUSB DFU Device not identified after 10sec...\n");
+              exit(-1);
+          }
+          printf("Device restarted, new DFU interface = %d\n",XMOS_DFU_IF);
     }
+    SLEEP(1);
     result = write_dfu_image(XMOS_DFU_IF, filename, 1, target_firmware_bin, sizeof(target_firmware_bin) );
     if (result >= 0) {
         xmos_resetdevice(XMOS_DFU_IF);
@@ -411,7 +409,7 @@ entry:
         printf("Device version v%d.%02X\n",BCDdevice>>8,BCDdevice & 0xFF);
 #if defined( WIN32 )
         if (BCDdevice > 0x141) {
-            if (BCDdevice < 0x0150) show_fp_status();	//Bizarre isnt it >= instead
+            if (BCDdevice >= 0x0150) show_fp_status();	//Bizarre isnt it >= instead
             else {
                 printf("please now wait max 60 seconds for font-panel firmware upgrade... Do not power off!\n");
                 for (int i=0; i< 60; i++) {

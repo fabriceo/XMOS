@@ -812,6 +812,7 @@ int main(int argc, char **argv) {
             fprintf(stderr, "\nDevice not identified after 60sec...\n");
             exit(-1);
         }
+        libusb_exit(NULL);
    } else
    if(modetest)  {
       printf("Sending vendor test command...\n");
@@ -828,7 +829,7 @@ int main(int argc, char **argv) {
           }
 #endif
           xmos_enterdfu(XMOS_DFU_IF);
-          if (BCDdevice >= 0x150) {
+          if (BCDdevice >= 0x150) { //requires re-enumeration
               if (devhopen>=0) libusb_close(devh);
               printf("Device is restarting, waiting usb re-enumeration (10seconds max)...\n");
               int result;
@@ -843,7 +844,9 @@ int main(int argc, char **argv) {
                     fprintf(stderr, "\nUSB DFU Device not identified after 10sec...\n");
                     exit(-1);
                 }
+                printf("Device restarted, new DFU interface = %d\n",XMOS_DFU_IF);
           }
+          SLEEP(1);
           int result = write_dfu_image(XMOS_DFU_IF, filename, 0, NULL, 0);
           if (result >= 0) {
               int oldBCD = BCDdevice;
@@ -859,8 +862,11 @@ int main(int argc, char **argv) {
                   SLEEP(1);
               }
               if (result >= 0) {
-                   printf("\nDevice upgraded successfully to v%d.%02X\n",BCDdevice>>8,BCDdevice & 0xFF); }
-              else printf("\nDevice not found after 10sec...\n");
+                   printf("\nDevice upgraded successfully to v%d.%02X\n",BCDdevice>>8,BCDdevice & 0xFF);
+                   if (BCDdevice > 0x141) show_fp_status();
+                   libusb_exit(NULL);
+              } else
+                  printf("\nDevice not found after 10sec...\n");
           }
       }
 
