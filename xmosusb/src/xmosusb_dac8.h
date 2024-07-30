@@ -161,15 +161,19 @@ int dac_executecmd() {
     }
     else
     if (dacmode) {
+        fprintf(stderr, "\ncommand not implemented yet.\n");
+        exit(-1);
         vendor_to_dev(VENDOR_SET_MODE,param1,0);
     }
     else
     if (dacmute) {
         vendor_to_dev(VENDOR_AUDIO_MUTE,0,0);
+        getDacStatus();
     }
     else
     if (dacunmute) {
         vendor_to_dev(VENDOR_AUDIO_UNMUTE,0,0);
+        getDacStatus();
     }
     else return 0;
     return 1;
@@ -185,8 +189,10 @@ int dashed = 0;
 while(1) {
     int result = libusb_control_transfer(devh, VENDOR_REQUEST_FROM_DEV,
         VENDOR_GET_DEVICE_INFO, 0, 0, data, 64, 0);
-    if (result<0) {
+    if ( result < 0 ) {
         fflush(stdout); printf("\n");
+        libusb_close(devh);
+        result = find_usb_device(deviceID, 0, 1);
         libusb_close(devh);
         return;
     }
@@ -205,7 +211,7 @@ while(1) {
             case fw_faulty      : return; }
         }
         else {
-            int num = progress / 1024;
+            int num = progress / 2048;
             for (int i=0; i<num; i++) printf("#");
             if (num) {
 				printf("\r");fflush(stdout);
@@ -374,8 +380,8 @@ entry:
         if (devhopen>=0) libusb_close(devh);
         printf("Device is restarting, waiting usb re-enumeration (10seconds max)...\n");
         int result;
-        printf("#");fflush(stdout);
-          SLEEP(1);
+        printf("##");fflush(stdout);
+          SLEEP(2);
           for (int i=1; i<=10; i++) {
               printf("#");fflush(stdout);
               if ((result = find_usb_device(deviceID, 0, 1)) >= 0) break;
@@ -383,9 +389,10 @@ entry:
           }
           if (result < 0) {
               fprintf(stderr, "\nUSB DFU Device not identified after 10sec...\n");
+              libusb_exit(NULL);
               exit(-1);
           }
-          printf("Device restarted, new DFU interface = %d\n",XMOS_DFU_IF);
+          printf("Device restarted, DFU interface = %d\n",XMOS_DFU_IF);
     }
     SLEEP(1);
     result = write_dfu_image(XMOS_DFU_IF, filename, 1, target_firmware_bin, sizeof(target_firmware_bin) );
@@ -415,7 +422,7 @@ entry:
                 for (int i=0; i< 60; i++) {
                     printf("#");fflush(stdout);
                     SLEEP(1);   }
-                printf("\nUpgrade process completed. Press Volume knob to display new front panel menus.\n");
+                printf("\nUpgrade process should be completed. Press Volume knob to display new front panel menus.\n");
             }
         }
 #else

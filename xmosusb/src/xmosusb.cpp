@@ -130,15 +130,15 @@ int devhopen = -1;                          //track status of the device open or
 unsigned XMOS_DFU_IF  = 0;                  // interface number used by the DFU driver, valid once device is opened
 unsigned deviceID = 0;                      // device number selected by the user in the command line (usefull when many xmos device found)
 char * deviceSerial = NULL;                 // serial number found in the command line typed by the user
-unsigned BCDdevice = 0;
+unsigned BCDdevice = 0;                     //version of the device
 
-unsigned char data[64];                       // global var used to exchange data between usb host-device
+static unsigned char data[64];                     // global var used to exchange data between usb host-device
 static char str64[64] = "";
 static char Manufacturer[64] = "";
 static char Product[64] = "";
 static char SerialNumber[16] = "";
 
-//helper function to store data non alligned on 32bits chunks
+//helper function to store data non alligned on 32bits chunks in the data[] table
 static inline void storeInt(int idx,int val){
     data[idx] = val ;
     data[idx+1] = val>>8;
@@ -165,7 +165,7 @@ static inline int loadShort(int idx){
     return val;
 }
 
-void remove_spaces(char* s) {
+static void remove_spaces(char* s) {
     char* d = s;
     do {
         while (*d == ' ')  ++d;
@@ -180,7 +180,7 @@ static char waitKey(){
 }
 
 //this source code is quite obscur...
-//I have tried to leverage the existing one from xmos and now its heavy and not easy
+//I have tried to leverage the existing one from xmos and now its heavy and not easy to understand
 static int find_usb_device(unsigned int id, unsigned int list, unsigned int printmode) // list !=0 means printing device information
 {
     libusb_device *dev = NULL;
@@ -201,86 +201,92 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
         struct libusb_device_descriptor desc;
         libusb_get_device_descriptor(dev, &desc); 
 
-        int foundDev = 0;
+        int found = 0;
 
         if (deviceSerial == NULL) {
             int vid = desc.idVendor;
             int pid = desc.idProduct;
-            for(int j = 0; j < sizeof(vidpidList)/sizeof(vidpidList[0]); j++) {
-                if(pid == (vidpidList[j] & 0xFFFF) && (vid == (vidpidList[j]>>16)) ) {
+            if( ( ( pid & 0xF000 )== 0x2000) && (vid == 0x20B1) ) {
                     BCDdevice = desc.bcdDevice;
-                    foundDev = 1;
-                    break; // for loop
-                }
-            }
-			if( ( ( pid & 0xF000 )== 0x2000) && (vid == 0x20B1) ) {
-                    BCDdevice = desc.bcdDevice;
-                    foundDev = 1;
-            }
+                    found = 1;
+            } else
+                for(int j = 0; j < sizeof(vidpidList)/sizeof(vidpidList[0]); j++) {
+                    if(pid == (vidpidList[j] & 0xFFFF) && (vid == (vidpidList[j]>>16)) ) {
+                        BCDdevice = desc.bcdDevice;
+                        found = 1;
+                        break; // for loop
+                    }
+                } //for
+
         } else {
+
             // check if current device correspond to given serial number
             if ((devhopen = libusb_open(dev, &devh)) >= 0)  {
                 libusb_config_descriptor *config_desc = NULL;
                 libusb_get_active_config_descriptor(dev, &config_desc);
                 if (config_desc != NULL) {
                     if (desc.iSerialNumber) {
-                        result = libusb_get_string_descriptor_ascii(devh, desc.iSerialNumber, (unsigned char*)str64, sizeof(str64));
+                        result = libusb_get_string_descriptor_ascii(devh, desc.iSerialNumber, (unsigned char *)str64, sizeof(str64));
                         if (result > 0) {
                             result = strcmp( str64, deviceSerial );
                             if ( result == 0 ) {
+                                BCDdevice = desc.bcdDevice;
                                 id = currentId; // force the id to be used, as the user gave a firm serial number
-                                foundDev = 1;
+                                found = 1;
                             }
                         }
                     }
                     libusb_free_config_descriptor(config_desc);
                 } // config_desc
+                libusb_close(devh);
             }
         }
 
-        if ((list || foundDev)) {   // "list" flag will force displaying all devices, not only the one found
+        if ((list || found)) {   // "list" flag will force displaying all devices, not only the one found
 
-            if ((devhopen = libusb_open(dev, &devh)) >=0 )  {
-
+            if ((devhopen = libusb_open(dev, &devh)) >= 0 )  {
 
                 libusb_config_descriptor *config_desc = NULL;
                 libusb_get_active_config_descriptor(dev, &config_desc);
                 if (config_desc != NULL)  {
 
                     if (desc.iManufacturer) {
-                        result = libusb_get_string_descriptor_ascii(devh, desc.iManufacturer, (unsigned char*)str64, sizeof(str64));
-
+                        result = libusb_get_string_descriptor_ascii(devh, desc.iManufacturer, (unsigned char *)str64, sizeof(str64));
                         if (result > 0) {
                             if (printmode) {
-                                if (foundDev) printf("\n[%d] > ",currentId);
+                                if (found) printf("\n[%d] > ",currentId);
                                 else printf("\n      ");
                                 printf("VID %04X, PID %04X, BCD %04X : %s", desc.idVendor, desc.idProduct, desc.bcdDevice, str64); }
-                            if (currentId == id){
-                                result = libusb_get_string_descriptor_ascii(devh, desc.iManufacturer, (unsigned char*)Manufacturer, sizeof(Manufacturer));
-                            }
-                    } }
+                            if (currentId == id)
+                                result = libusb_get_string_descriptor_ascii(devh, desc.iManufacturer, (unsigned char *)Manufacturer, sizeof(Manufacturer));
+                        }
+                    }
+
                     if (desc.iProduct) {
-                        result = libusb_get_string_descriptor_ascii(devh, desc.iProduct, (unsigned char*)str64, sizeof(str64));
+                        result = libusb_get_string_descriptor_ascii(devh, desc.iProduct, (unsigned char *)str64, sizeof(str64));
                         if (result > 0) {
                             if (printmode) printf("  %s", str64);
-                            if (currentId == id)
-                                result = libusb_get_string_descriptor_ascii(devh, desc.iProduct, (unsigned char*)Product, sizeof(Product));
+                            if (currentId == id) {
+                                result = libusb_get_string_descriptor_ascii(devh, desc.iProduct, (unsigned char *)Product, sizeof(Product));
                                 remove_spaces(Product); //added 20230429
-                    } }
+                            }
+                        }
+                    }
 
                     if (desc.iSerialNumber) {
-                        result = libusb_get_string_descriptor_ascii(devh, desc.iSerialNumber, (unsigned char*)str64, sizeof(str64));
+                        result = libusb_get_string_descriptor_ascii(devh, desc.iSerialNumber, (unsigned char *)str64, sizeof(str64));
                         if (result > 0) {
                             if (printmode) printf("  %s", str64);
                             if (currentId == id)
-                                result = libusb_get_string_descriptor_ascii(devh, desc.iSerialNumber, (unsigned char*)SerialNumber, sizeof(SerialNumber));
-                    } }
+                                result = libusb_get_string_descriptor_ascii(devh, desc.iSerialNumber, (unsigned char *)SerialNumber, sizeof(SerialNumber));
+                        }
+                    }
                     libusb_free_config_descriptor(config_desc);
                 } // config_desc
-                if (devhopen>=0) libusb_close(devh);
+                libusb_close(devh);
             }
         }
-        if (foundDev) { // only for a valid device
+        if (found) { // only for a valid device
 
             if ((currentId == id) || (devicePid == desc.idProduct))  { // for the device select, go deper and show interfaces
 
@@ -304,10 +310,9 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
                                XMOS_DFU_IF = j;
                                if (printmode>1) {
                                    printf("      (%d)  usb DFU",j);
-                                   if (j == 0) printf(" => need REBOOT / power-cycling required");
+                                   if (j == 0) printf(" => awaiting REBOOT / power-cycling required");
                                    printf("\n");
                                }
-
                             }
 
                             else if (inter_desc->bInterfaceClass == LIBUSB_CLASS_AUDIO &&
@@ -333,27 +338,31 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
                                 inter_desc->bInterfaceSubClass == 0x00)  {
                                 if (printmode>1) printf("      (%d)  usb CDC Serial\n",j); }
                             else if (printmode>1) printf("     (%d)  %X %X unknown interface\n",j,inter_desc->bInterfaceClass,inter_desc->bInterfaceSubClass);
-                           }
+                            } //for each interface
 
                         libusb_free_config_descriptor(config_desc);
                     } else {
-                        if (printmode) printf(" ? No access to descriptor (pid=%x,bcd=%x)\n",devicePid,BCDdevice); }
-                    if (devhopen>=0) libusb_close(devh);
+                        if (printmode) printf(" ? No access to descriptor (pid=%x,bcd=%x)\n",devicePid,BCDdevice);
+                        founddev = NULL;
+                    }
+                    libusb_close(devh);
                 } // libusb_open
                 else {
+                    founddev = NULL;
 #if defined(__linux__)
-                    fprintf(stderr,"\nCannot open device => execute the command with proper admin rights or sudo\n");
+                    fprintf(stderr,"\nCannot open device => try executing the command with admin rights or sudo prefix\n");
 #elif defined( WIN32 )
                     //if (BCDdevice < 0x0150) removed 20240517
-					fprintf(stderr,"\nCannot open device => uninstall any driver first and install winusb (using Zadig 2.8)\n");
+					fprintf(stderr,"\nCannot open device => uninstall any driver first and install winusb (eg using Zadig 2.8)\n");
 #endif
                 }
-                if (!list) break;  // device selected : leave the while loop, device is closed
+                if (!list) break;  // device selected : leave the while 1 loop, device is closed
             } // if currentId == id
             currentId++;
-        } // foundDev
+        } // found
     } // while 1
 
+    devh = NULL;
     if (founddev)  {
         devhopen = libusb_open(founddev, &devh);
         int ret;
@@ -413,7 +422,8 @@ int dfu_getStatus(unsigned int interface, unsigned char *state, unsigned int *ti
 int dfu_download(unsigned int interface, unsigned int block_num, unsigned int size, unsigned char *data) {
   //printf("... Downloading block number %d size %d\r", block_num, size);
     unsigned int numBytes = 0;
-    numBytes = libusb_control_transfer(devh, DFU_REQUEST_TO_DEV, /* XMOS_DFU_DNLOAD */ DFU_DNLOAD, block_num, interface, data, size, 0);
+    //for compatibility reason , XMOS_DFU_DNLOAD is used with old version where DFU is on interface 3 (no reboot)
+    numBytes = libusb_control_transfer(devh, DFU_REQUEST_TO_DEV, interface ? XMOS_DFU_DNLOAD : DFU_DNLOAD, block_num, interface, data, size, 0);
     return numBytes;
 }
 
@@ -649,7 +659,7 @@ void libusbexit(){
 #if defined(TUSBAUDIOAPI)
 	if (devh != 0) gDrvApi.TUSBAUDIO_CloseDevice(devh);
 #else
-	libusb_close(devh);
+	if (devh) libusb_close(devh);
     libusb_exit(NULL);
 #endif
 }
@@ -799,20 +809,21 @@ int main(int argc, char **argv) {
    if(resetdevice)  {
       printf("Sending device reboot command...\n");
       vendor_to_dev(VENDOR_RESET_DEVICE,0,0);
-      printf("Device restarting, waiting usb re-enumeration (60seconds max)...\n");
+      if (devhopen>=0) libusb_close(devh);
+      printf("Device restarting, waiting usb re-enumeration (10seconds max)...\n");
       int result;
       printf("#");fflush(stdout);
         SLEEP(2);
-        for (int i=2; i<=60; i++) {
+        for (int i=2; i<=10; i++) {
             printf("#");fflush(stdout);
             if ((result = find_usb_device(deviceID, 0, 1)) >= 0) break;
             SLEEP(1);
         }
         if (result < 0) {
             fprintf(stderr, "\nDevice not identified after 60sec...\n");
+            libusb_exit(NULL);
             exit(-1);
         }
-        libusb_exit(NULL);
    } else
    if(modetest)  {
       printf("Sending vendor test command...\n");
@@ -825,26 +836,28 @@ int main(int argc, char **argv) {
 #ifdef WINDOWS
           if (BCDdevice >= 0x150) {
               printf("BCD version >= 150 : Please use Thesycon DFU utility to upgrade XMOS firmware\n");
+              libusb_exit(NULL);
               exit(-1);
           }
 #endif
           xmos_enterdfu(XMOS_DFU_IF);
-          if (BCDdevice >= 0x150) { //requires re-enumeration
+          if (BCDdevice >= 0x150) { //requires re-enumeration as of version >= 1.50
               if (devhopen>=0) libusb_close(devh);
               printf("Device is restarting, waiting usb re-enumeration (10seconds max)...\n");
               int result;
-              printf("#");fflush(stdout);
-                SLEEP(1);
-                for (int i=1; i<=10; i++) {
+              printf("##");fflush(stdout);
+                SLEEP(2);
+                for (int i=2; i<=10; i++) {
                     printf("#");fflush(stdout);
                     if ((result = find_usb_device(deviceID, 0, 1)) >= 0) break;
                     SLEEP(1);
                 }
                 if (result < 0) {
                     fprintf(stderr, "\nUSB DFU Device not identified after 10sec...\n");
+                    libusb_exit(NULL);
                     exit(-1);
                 }
-                printf("Device restarted, new DFU interface = %d\n",XMOS_DFU_IF);
+                printf("Device restarted with DFU on interface %d\n",XMOS_DFU_IF);
           }
           SLEEP(1);
           int result = write_dfu_image(XMOS_DFU_IF, filename, 0, NULL, 0);
@@ -854,19 +867,17 @@ int main(int argc, char **argv) {
               if (devhopen>=0) libusb_close(devh);
               printf("Restarting device, waiting usb enumeration (10 seconds max)...\n");
               printf("#");fflush(stdout);
-              SLEEP(1);
-              for (int i=1; i<=10; i++) {
+              SLEEP(2);
+              for (int i=2; i<=10; i++) {
                     printf("#");fflush(stdout);
-                  result = find_usb_device(deviceID, 0, 1);
-                  if (result >=0) break;
+                  if ( (result = find_usb_device(deviceID, 0, 1)) >= 0 ) break;
                   SLEEP(1);
               }
               if (result >= 0) {
                    printf("\nDevice upgraded successfully to v%d.%02X\n",BCDdevice>>8,BCDdevice & 0xFF);
                    if (BCDdevice > 0x141) show_fp_status();
-                   libusb_exit(NULL);
               } else
-                  printf("\nDevice not found after 10sec...\n");
+                  fprintf(stderr,"\nDevice not found after 10sec...\n");
           }
       }
 
