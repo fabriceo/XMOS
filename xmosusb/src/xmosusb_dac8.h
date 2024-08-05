@@ -191,9 +191,9 @@ while(1) {
         VENDOR_GET_DEVICE_INFO, 0, 0, data, 64, 0);
     if ( result < 0 ) {
         fflush(stdout); printf("\n");
-        libusb_close(devh);
+        if (devhopen>=0) libusb_close(devh);
         result = find_usb_device(deviceID, 0, 1);
-        libusb_close(devh);
+        if (devhopen>=0) libusb_close(devh);
         return;
     }
 
@@ -352,11 +352,11 @@ entry:
                 xmos_resetdevice(XMOS_DFU_IF);
                 int oldBCD = BCDdevice;
                 if (devhopen>=0) libusb_close(devh);
-                printf("Restarting device, waiting usb enumeration...\n");
-				SLEEP(4);
-                for (int i=1; i<=3; i++) {
+                printf("Restarting device, waiting usb enumeration (60 seconds max...)\n");
+				SLEEP(2);
+                for (int i=1; i<=60; i++) {
                     result = find_usb_device(deviceID, 0, 1);
-                    SLEEP(2);
+                    SLEEP(1);
                     if (result >=0) break; //&& (oldBCD != BCDdevice)) break;
                 }
             }
@@ -377,18 +377,18 @@ entry:
     printf("Upgrading USB firmware, do not disconnect...\n");
     xmos_enterdfu(XMOS_DFU_IF);
     if (BCDdevice >= 0x150) {
-        libusb_close(devh);
-        printf("Device is restarting, waiting usb re-enumeration (10seconds max)...\n");
+        if (devhopen>=0) libusb_close(devh);
+        printf("Device is restarting, waiting usb re-enumeration (60seconds max)...\n");
         int result;
         printf("##");fflush(stdout);
           SLEEP(2);
-          for (int i=1; i<=10; i++) {
+          for (int i=1; i<=60; i++) {
               printf("#");fflush(stdout);
               if ((result = find_usb_device(deviceID, 0, 1)) >= 0) break;
               SLEEP(1);
           }
           if (result < 0) {
-              fprintf(stderr, "\nUSB DFU Device not identified after 10sec...\n");
+              fprintf(stderr, "\nUSB DFU Device not identified after 60sec...\n");
               libusb_exit(NULL);
               exit(-1);
           }
@@ -398,7 +398,7 @@ entry:
     result = write_dfu_image(XMOS_DFU_IF, filename, 1, target_firmware_bin, sizeof(target_firmware_bin) );
     if (result >= 0) {
         xmos_resetdevice(XMOS_DFU_IF);
-        libusb_close(devh);
+        if (devhopen>=0) libusb_close(devh);
         int oldBCD = BCDdevice;
 		char oldProduct[64];
 		strncpy(oldProduct, Product, 64);

@@ -661,6 +661,14 @@ int libusbinit(){
 	return 0;
 }
 
+void libusb_init() {
+    int r = libusbinit();
+    if (r < 0) {
+      fprintf(stderr, "ERROR : Failed to initialise libusb...\n");
+      exit(-1); }
+}
+
+
 void libusbexit(){
 #if defined(TUSBAUDIOAPI)
 	if (devh != 0) gDrvApi.TUSBAUDIO_CloseDevice(devh);
@@ -798,10 +806,7 @@ int main(int argc, char **argv) {
 
   // now program is really starting
   // opening lib usb
-  r = libusbinit();
-  if (r < 0) {
-    fprintf(stderr, "ERROR : Failed to initialise libusb...\n");
-    exit(-1); }
+  libusb_init();
 
   // searching for usb device
   r = find_usb_device(deviceID, listdev, 2); // if listdev = 1, this will print all devices found
@@ -816,11 +821,12 @@ int main(int argc, char **argv) {
       printf("Sending device reboot command...\n");
       vendor_to_dev(VENDOR_RESET_DEVICE,0,0);
       if (devhopen>=0) libusb_close(devh);
-      printf("Device restarting, waiting usb re-enumeration (10seconds max)...\n");
+
+      printf("Device restarting, waiting usb re-enumeration (60seconds max)...\n");
       int result;
       printf("#");fflush(stdout);
         SLEEP(2);
-        for (int i=2; i<=10; i++) {
+        for (int i=2; i<=60; i++) {
             printf("#");fflush(stdout);
             if ((result = find_usb_device(deviceID, 0, 1)) >= 0) break;
             SLEEP(1);
@@ -848,18 +854,18 @@ int main(int argc, char **argv) {
 #endif
           xmos_enterdfu(XMOS_DFU_IF);
           if (BCDdevice >= 0x150) { //requires re-enumeration as of version >= 1.50
-              libusb_close(devh);
-              printf("Device is restarting, waiting usb re-enumeration (10seconds max)...\n");
+              if (devhopen>=0) libusb_close(devh);
+              printf("Device is restarting, waiting usb re-enumeration (60seconds max)...\n");
               int result;
               printf("##");fflush(stdout);
-                SLEEP(2);
-                for (int i=2; i<=10; i++) {
+                SLEEP(1);
+                for (int i=2; i<=60; i++) {
                     printf("#");fflush(stdout);
                     if ((result = find_usb_device(deviceID, 0, 1)) >= 0) break;
                     SLEEP(1);
                 }
                 if (result < 0) {
-                    fprintf(stderr, "\nUSB DFU Device not identified after 10sec...\n");
+                    fprintf(stderr, "\nUSB DFU Device not identified after 60sec...\n");
                     libusb_exit(NULL);
                     exit(-1);
                 }
@@ -870,11 +876,11 @@ int main(int argc, char **argv) {
           if (result >= 0) {
               int oldBCD = BCDdevice;
               xmos_resetdevice(XMOS_DFU_IF);
-              libusb_close(devh);
-              printf("Restarting device, waiting usb enumeration (10 seconds max)...\n");
+              if (devhopen>=0) libusb_close(devh);
+              printf("Restarting device, waiting usb enumeration (60 seconds max)...\n");
               printf("#");fflush(stdout);
               SLEEP(2);
-              for (int i=2; i<=10; i++) {
+              for (int i=2; i<=60; i++) {
                     printf("#");fflush(stdout);
                   if ( (result = find_usb_device(deviceID, 0, 1)) >= 0 ) break;
                   SLEEP(1);
@@ -883,7 +889,7 @@ int main(int argc, char **argv) {
                    printf("\nDevice upgraded successfully to v%d.%02X\n",BCDdevice>>8,BCDdevice & 0xFF);
                    if (BCDdevice > 0x141) show_fp_status();
               } else
-                  fprintf(stderr,"\nDevice not found after 10sec...\n");
+                  fprintf(stderr,"\nDevice not found after 60sec...\n");
           }
       }
 
