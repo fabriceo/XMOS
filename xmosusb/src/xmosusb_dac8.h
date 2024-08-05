@@ -110,7 +110,7 @@ void getDacStatus(){
                 int maxInst = loadShort(25+i+i);
                 maxDsp = loadShort(27+i+i);
                 printf("DSP max load        = %d / %d = %d%%fs\n", maxInst , maxDsp, (int)(maxInst*100.0/(float)maxDsp) );
-                int maxsize = loadShort(29+i+i);
+                int maxsize = loadUnsignedShort(29+i+i);
                 printf("DSP mem available   = %d words\n",maxsize);
             }
     }
@@ -377,7 +377,7 @@ entry:
     printf("Upgrading USB firmware, do not disconnect...\n");
     xmos_enterdfu(XMOS_DFU_IF);
     if (BCDdevice >= 0x150) {
-        if (devhopen>=0) libusb_close(devh);
+        libusb_close(devh);
         printf("Device is restarting, waiting usb re-enumeration (10seconds max)...\n");
         int result;
         printf("##");fflush(stdout);
@@ -398,15 +398,15 @@ entry:
     result = write_dfu_image(XMOS_DFU_IF, filename, 1, target_firmware_bin, sizeof(target_firmware_bin) );
     if (result >= 0) {
         xmos_resetdevice(XMOS_DFU_IF);
+        libusb_close(devh);
         int oldBCD = BCDdevice;
 		char oldProduct[64];
 		strncpy(oldProduct, Product, 64);
-        if (devhopen>=0) libusb_close(devh);
         printf("Restarting device %s, waiting usb enumeration...\n", Product);
-		SLEEP(4);
-        for (int i=1; i<=3; i++) {
+		SLEEP(2);
+        for (int i=2; i<=10; i++) {
             result = find_usb_device(deviceID, 0, 1);
-            SLEEP(2);
+            SLEEP(1);
 			//int test = strcmp(Product,oldProduct);
             if ((result >=0) || (BCDdevice>=0x0150)) break; //&& ((oldBCD != BCDdevice)||(test |= 0))) break;
             //if (result >=0) libusb_close(devh);

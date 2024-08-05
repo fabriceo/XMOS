@@ -165,6 +165,12 @@ static inline int loadShort(int idx){
     return val;
 }
 
+static inline int loadUnsignedShort(int idx){
+    unsigned short val = data[idx];
+    val |= data[idx+1]<<8;
+    return val;
+}
+
 static void remove_spaces(char* s) {
     char* d = s;
     do {
@@ -842,7 +848,7 @@ int main(int argc, char **argv) {
 #endif
           xmos_enterdfu(XMOS_DFU_IF);
           if (BCDdevice >= 0x150) { //requires re-enumeration as of version >= 1.50
-              if (devhopen>=0) libusb_close(devh);
+              libusb_close(devh);
               printf("Device is restarting, waiting usb re-enumeration (10seconds max)...\n");
               int result;
               printf("##");fflush(stdout);
@@ -864,7 +870,7 @@ int main(int argc, char **argv) {
           if (result >= 0) {
               int oldBCD = BCDdevice;
               xmos_resetdevice(XMOS_DFU_IF);
-              if (devhopen>=0) libusb_close(devh);
+              libusb_close(devh);
               printf("Restarting device, waiting usb enumeration (10 seconds max)...\n");
               printf("#");fflush(stdout);
               SLEEP(2);
