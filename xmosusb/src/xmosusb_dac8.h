@@ -377,12 +377,14 @@ entry:
     printf("Upgrading USB firmware, do not disconnect...\n");
     xmos_enterdfu(XMOS_DFU_IF);
     if (BCDdevice >= 0x150) {
+    if (XMOS_DFU_IF) {
+     	xmos_enterdfu(XMOS_DFU_IF);
         if (devhopen>=0) libusb_close(devh);
         printf("Device is restarting, waiting usb re-enumeration (60seconds max)...\n");
         int result;
         printf("##");fflush(stdout);
           SLEEP(2);
-          for (int i=1; i<=60; i++) {
+          for (int i=2; i<=60; i++) {
               printf("#");fflush(stdout);
               if ((result = find_usb_device(deviceID, 0, 1)) >= 0) break;
               SLEEP(1);
@@ -394,6 +396,8 @@ entry:
           }
           printf("Device restarted, DFU interface = %d\n",XMOS_DFU_IF);
     }
+    } else
+    	xmos_enterdfu(XMOS_DFU_IF);
     SLEEP(1);
     result = write_dfu_image(XMOS_DFU_IF, filename, 1, target_firmware_bin, sizeof(target_firmware_bin) );
     if (result >= 0) {

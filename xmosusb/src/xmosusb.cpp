@@ -352,6 +352,7 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
                         founddev = NULL;
                     }
                     libusb_close(devh);
+                    
                 } // libusb_open
                 else {
                     founddev = NULL;
@@ -368,28 +369,29 @@ static int find_usb_device(unsigned int id, unsigned int list, unsigned int prin
         } // found
     } // while 1
 
-    devh = NULL;
+    devh = NULL; devhopen = -1;
     if (founddev)  {
-        devhopen = libusb_open(founddev, &devh);
-        int ret;
-        /*
-        libusb_set_auto_detach_kernel_driver(devh, 1);
-        printf("\nKernel driver attached for interface %d: ", XMOS_DFU_IF);
-        ret = libusb_kernel_driver_active(devh, XMOS_DFU_IF);
-        if (ret == 0)
-            printf("none\n");
-        else if (ret == 1)
-            printf("yes\n");
-        else if (ret == LIBUSB_ERROR_NOT_SUPPORTED)
-            printf("(not supported on this platform)\n");
-        else
-            printf("\n   Failed (error %d) %s\n", ret, libusb_strerror((enum libusb_error) ret));
-        printf("\nClaiming interface %d...\n", XMOS_DFU_IF);
-        */
-        ret = libusb_claim_interface(devh,XMOS_DFU_IF);
-        if (ret != LIBUSB_SUCCESS) {
-            fprintf(stderr,"   Claiming interface Failed (error %d) %s\n", ret, libusb_strerror((enum libusb_error) ret)); }
-        if (printmode) printf("\n");
+        if ((devhopen = libusb_open(founddev, &devh)) >=0) {
+			int ret;
+			/*
+			libusb_set_auto_detach_kernel_driver(devh, 1);
+			printf("\nKernel driver attached for interface %d: ", XMOS_DFU_IF);
+			ret = libusb_kernel_driver_active(devh, XMOS_DFU_IF);
+			if (ret == 0)
+				printf("none\n");
+			else if (ret == 1)
+				printf("yes\n");
+			else if (ret == LIBUSB_ERROR_NOT_SUPPORTED)
+				printf("(not supported on this platform)\n");
+			else
+				printf("\n   Failed (error %d) %s\n", ret, libusb_strerror((enum libusb_error) ret));
+			printf("\nClaiming interface %d...\n", XMOS_DFU_IF);
+			*/
+			ret = libusb_claim_interface(devh,XMOS_DFU_IF);
+			if (ret != LIBUSB_SUCCESS) {
+				fprintf(stderr,"   Claiming interface Failed (error %d) %s\n", ret, libusb_strerror((enum libusb_error) ret)); }
+			if (printmode) printf("\n");
+        };
     }
 
     libusb_free_device_list(devs, 1);
@@ -695,6 +697,7 @@ int main(int argc, char **argv) {
 
   unsigned int xmosload = 0;
   unsigned int resetdevice = 0;
+  unsigned int resetfromdfu = 0;
   unsigned int listdev  = 0;
   unsigned int enterdfu = 0;
   unsigned int leavedfu = 0;
@@ -707,6 +710,7 @@ int main(int argc, char **argv) {
         fprintf(stderr, "Available options (optional deviceID as first option):\n");
         fprintf(stderr, "--listdevices          list all usb devices recognized by libusb\n");      // list all the USB devices and point the one with xmos vendor ID
         fprintf(stderr, "--resetdevice          send a reset/reboot command\n");      // send a DFU command for reseting the device
+        fprintf(stderr, "--resetfromdfu         send a reset/reboot command to exit dfu mode\n");      // send a DFU command for reseting the device
         fprintf(stderr, "--xmosload file        upload a firmware into the xmos flash memeory. NO VERIFICATION on file compatibility.\n");    // load a new firmware into the xmos flash boot partition
 #if defined ( BIN2HEX_CMD ) && ( BIN2HEX_CMD > 0 )
         fprintf(stderr, "--bin2hex  file        convert a binary file into a text file with hexadecimal values\n");    // convert a binary file into a text file with hexadecimal presentation grouped by 4 bytes, for C/C++ include
@@ -778,6 +782,9 @@ int main(int argc, char **argv) {
   if(strcmp(argv[argi], "--resetdevice") == 0) {
           resetdevice = 1;
   } else
+  if(strcmp(argv[argi], "--resetfromdfu") == 0) {
+          resetfromdfu = 1;
+  } else
   if(strcmp(argv[argi], "--test") == 0) {
           modetest = 1;
   } else
@@ -824,8 +831,27 @@ int main(int argc, char **argv) {
 
       printf("Device restarting, waiting usb re-enumeration (60seconds max)...\n");
       int result;
-      printf("#");fflush(stdout);
-        SLEEP(2);
+      printf("##");fflush(stdout);
+      SLEEP(2);
+        for (int i=2; i<=60; i++) {
+            printf("#");fflush(stdout);
+            if ((result = find_usb_device(deviceID, 0, 1)) >= 0) break;
+            SLEEP(1);
+        }
+        if (result < 0) {
+            fprintf(stderr, "\nDevice not identified after 60sec...\n");
+            libusb_exit(NULL);
+            exit(-1);
+        }
+   } else
+   if(resetfromdfu)  {
+      printf("Sending device reboot command...\n");
+      xmos_leavedfu(XMOS_DFU_IF);
+      if (devhopen>=0) libusb_close(devh);
+      printf("Device restarting, waiting usb re-enumeration (60seconds max)...\n");
+      int result;
+      printf("##");fflush(stdout);
+      SLEEP(2);
         for (int i=2; i<=60; i++) {
             printf("#");fflush(stdout);
             if ((result = find_usb_device(deviceID, 0, 1)) >= 0) break;
@@ -852,13 +878,14 @@ int main(int argc, char **argv) {
               exit(-1);
           }
 #endif
-          xmos_enterdfu(XMOS_DFU_IF);
           if (BCDdevice >= 0x150) { //requires re-enumeration as of version >= 1.50
+			if (XMOS_DFU_IF) {
+          	  xmos_enterdfu(XMOS_DFU_IF);
               if (devhopen>=0) libusb_close(devh);
               printf("Device is restarting, waiting usb re-enumeration (60seconds max)...\n");
               int result;
               printf("##");fflush(stdout);
-                SLEEP(1);
+                SLEEP(2);
                 for (int i=2; i<=60; i++) {
                     printf("#");fflush(stdout);
                     if ((result = find_usb_device(deviceID, 0, 1)) >= 0) break;
@@ -870,6 +897,9 @@ int main(int argc, char **argv) {
                     exit(-1);
                 }
                 printf("Device restarted with DFU on interface %d\n",XMOS_DFU_IF);
+			}
+          } else {
+          	  xmos_enterdfu(XMOS_DFU_IF);
           }
           SLEEP(1);
           int result = write_dfu_image(XMOS_DFU_IF, filename, 0, NULL, 0);
@@ -878,7 +908,7 @@ int main(int argc, char **argv) {
               xmos_resetdevice(XMOS_DFU_IF);
               if (devhopen>=0) libusb_close(devh);
               printf("Restarting device, waiting usb enumeration (60 seconds max)...\n");
-              printf("#");fflush(stdout);
+              printf("##");fflush(stdout);
               SLEEP(2);
               for (int i=2; i<=60; i++) {
                     printf("#");fflush(stdout);
