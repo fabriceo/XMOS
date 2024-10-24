@@ -14,7 +14,8 @@ FLAGS  = -Wl,-framework,IOKit -Wl,-framework,CoreFoundation -Wl,-framework,Secur
 xmosusb:	../src/xmosusb.cpp ../src/xmosusb_samd.h ../src/xmosusb_dsp.h ../src/xmosusb_bin2hex.h ../src/xmosusb_dac8.h
 	@echo compiling xmosusb
 	g++ -o xmosusb ../src/xmosusb.cpp -I../src $(LIBUSB) $(FLAGS)
-	cp xmosusb /usr/local/bin/xmosusb1026
+	cp xmosusb /usr/local/bin/xmosusb1027
+	cp xmosusb /usr/local/bin/xmosusb
 	@echo xmosusb compiled sucessfully and copied in /usr/local/bin
 	
 testlibusb:	../src/testlibusb.c
