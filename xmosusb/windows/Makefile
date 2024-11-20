@@ -1,6 +1,6 @@
 #windows version
 #use mingw32-make or gmake
-	
+#
 #build all
 all:	xmosusb.exe testlibusb.exe Makefile dac8
 	@echo xmosusb and testlibusb and dac8 uptodate
