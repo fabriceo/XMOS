@@ -1,0 +1,6 @@
+09:06:55 **** Clean-only build of configuration Default for project module_i2c_simple ****
+xmake -f .makefile clean 
+** Module only - only builds as part of application **
+
+09:06:55 Build Finished (took 90ms)
+

@@ -115,7 +115,7 @@ void getDacStatus(){
             }
     }
 #if defined( SAMD_CMD ) && (SAMD_CMD > 0)
-    if (progress) fwprogress(0);    // display a simple text message about the dac status from fw perspective
+    if (progress) fwprogress(0,0);    // display a simple text message about the dac status from fw perspective
 #endif
 }
 
@@ -187,6 +187,7 @@ void show_fp_status(){
 static int oldprogress;
 int dashed = 0;
 while(1) {
+
     int result = libusb_control_transfer(devh, VENDOR_REQUEST_FROM_DEV,
         VENDOR_GET_DEVICE_INFO, 0, 0, data, 64, 0);
     if ( result < 0 ) {
@@ -196,6 +197,7 @@ while(1) {
         if (devhopen>=0) libusb_close(devh);
         return;
     }
+
 
     int progress = loadInt(19);//data[19]+(data[20]<<8)+(data[21]<<16)+(data[22]<<24);
     if (progress != oldprogress) {

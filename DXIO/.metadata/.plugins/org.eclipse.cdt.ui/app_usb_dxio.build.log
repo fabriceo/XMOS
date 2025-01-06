@@ -1,7 +1,9 @@
-18:17:57 **** Build of configuration 2i2o2xsxxxd for project app_usb_dxio ****
+09:09:44 **** Incremental Build of configuration 2i2o2xsxxxd for project app_usb_dxio ****
 xmake CONFIG=2i2o2xsxxxd all 
-xmake[1]: *** /Users/Fabrice/OKTO20201009/module_usb_shared: Is a directory.  Stop.
-xmake: *** [check_modules_msg] Error 2
+Checking build modules
+Using build modules: module_usb_shared module_xud module_usb_audio module_dfu module_usb_device module_i2c_shared module_i2c_single_port module_spdif_tx lib_spi(3.0.2) module_locks
+xmake[1]: `bin/2i2o2xsxxxd/app_usb_dxio_2i2o2xsxxxd.xe' is up to date.
+Build Complete
 
-18:17:57 Build Finished (took 644ms)
+09:09:46 Build Finished (took 2s.599ms)
 

@@ -118,18 +118,18 @@ void printfwstatus(int status){
 
 int fwstatus;
 // display the samd update progress (not finished, especially on xmos side)
-void fwprogress(int exitstate){
+void fwprogress(int exitstate, int getdev){
     //unsigned char data[64];
     int loop = 1;
     int i=0;
 	int result;
     while (loop) {
-        result = libusb_control_transfer(devh, VENDOR_REQUEST_FROM_DEV,
-					VENDOR_GET_DEVICE_INFO, 0, 0, data, 64, 0);
-					if (result<0) {
-						    printf("\n");
-							return;
-					}
+        if (getdev) {
+            result = libusb_control_transfer(devh, VENDOR_REQUEST_FROM_DEV,
+                        VENDOR_GET_DEVICE_INFO, 0, 0, data, 64, 0);
+            if (result<0) { printf("\n"); return; }
+        } else getdev=1;
+
         static int old = -100;
         int progress = loadInt(19); //data[19]+(data[20]<<8)+(data[21]<<16)+(data[22]<<24);
         if (progress <= 0) fwstatus = progress;
@@ -204,12 +204,12 @@ int samd_executecmd() {
           res = vendor_to_dev(VENDOR_AUDIO_MUTE,0,0);
 		  if (res<0) return 0;
           printf("muting dac\n");
-          fwprogress(fw_init);  // wait for status running or init (bootloader)
+          fwprogress(fw_init,1);  // wait for status running or init (bootloader)
           if (fwstatus != -fw_init) {
               printf("force bootload\n");
               res = vendor_from_dev(VENDOR_SAMD_DOWNLOAD, fw_bootloader, 0, data, 4);
 			  if (res<0) return 0;
-              fwprogress(fw_init); }
+              fwprogress(fw_init,1); }
           printf("force erase\n");
           res = vendor_from_dev(VENDOR_SAMD_DOWNLOAD, fw_erase, 0, data, 4);
           if (res == 4) {
@@ -221,7 +221,7 @@ int samd_executecmd() {
                       samdloadbinfile(XMOS_DFU_IF, filename);
                       printf("restarting\n");
                       res = vendor_from_dev(VENDOR_SAMD_DOWNLOAD, fw_starting, 0, data, 4);
-                      fwprogress(fw_running);
+                      fwprogress(fw_running,1);
 					  //TODO now the xmos is reset after flashing the front panel. Requires some changes
                   }
               }
@@ -237,7 +237,7 @@ int samd_executecmd() {
           vendor_to_dev(VENDOR_AUDIO_MUTE,0,0);
           printf("muting dac\n");
           res = vendor_from_dev(VENDOR_SAMD_DOWNLOAD, fw_startflashing, 0, data, 4);
-          fwprogress(fw_running);
+          fwprogress(fw_running,1);
           vendor_to_dev(VENDOR_AUDIO_UNMUTE,0,0);
           printf("unmuting dac\n");
       } else
@@ -245,24 +245,24 @@ int samd_executecmd() {
           int res = vendor_from_dev(VENDOR_SAMD_DOWNLOAD, fw_version, 0, data, 64);
           if (res>4) {
               printf("received %d chars : \n%s",res, data);
-              fwprogress(fw_init);
+              fwprogress(fw_init,1);
           } else
-              fwprogress(fw_init);
+              fwprogress(fw_init,1);
       }
       else
       if (samdbootloader) {
           int res = vendor_from_dev(VENDOR_SAMD_DOWNLOAD, fw_bootloader, 0, data, 4);
-          fwprogress(fw_init);
+          fwprogress(fw_init,1);
       }
       else
       if (samdreset) {
           int res = vendor_from_dev(VENDOR_SAMD_DOWNLOAD, fw_starting, 0, data, 4);
-          fwprogress(fw_running);
+          fwprogress(fw_running,1);
       }
       else
       if (samderase) {
           int res = vendor_from_dev(VENDOR_SAMD_DOWNLOAD, fw_erase, 0, data, 4);
-          fwprogress(fw_init);
+          fwprogress(fw_init,1);
       } else return 0;
     return 1;
 }
