@@ -936,5 +936,5 @@ int main(int argc, char **argv) {
 #endif
   } // if (listdev == 0)
   libusb_exit(NULL);
-  exit(1);
+  exit(0);
 }

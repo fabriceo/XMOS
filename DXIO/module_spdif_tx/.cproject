@@ -185,6 +185,10 @@
 									<listOptionValue builtIn="false" value="XCC_VERSION_MINOR=2"/>
 									<listOptionValue builtIn="false" value="__XCC_HAVE_FLOAT__=1"/>
 									<listOptionValue builtIn="false" value="_XSCOPE_PROBES_INCLUDE_FILE=&quot;/var/folders/nw/ppy210qs3r70rxy3cfb25kph0000gn/T//ccu3DHL1.h&quot;"/>
+									<listOptionValue builtIn="false" value="__XMOS_LEGACY_C_CPP_COMPILER__=1"/>
+									<listOptionValue builtIn="false" value="__XMOS_XTC_VERSION_MAJOR__=15"/>
+									<listOptionValue builtIn="false" value="__XMOS_XTC_VERSION_MINOR__=2"/>
+									<listOptionValue builtIn="false" value="__XMOS_XTC_VERSION_PATCH__=1"/>
 								</option>
 								<inputType id="com.xmos.cdt.xc.compiler.input.234434712" name="XC" superClass="com.xmos.cdt.xc.compiler.input"/>
 							</tool>
