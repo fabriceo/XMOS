@@ -871,7 +871,7 @@ int main(int argc, char **argv) {
   if (listdev == 0) {
 
       if (xmosload) {
-#if 0 //def WINDOWS
+#ifdef WINDOWS
           if (BCDdevice >= 0x150) {
               printf("BCD version >= 150 : Please use Thesycon DFU utility to upgrade XMOS firmware\n");
               libusb_exit(NULL);
