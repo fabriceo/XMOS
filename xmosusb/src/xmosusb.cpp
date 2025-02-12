@@ -872,6 +872,8 @@ int main(int argc, char **argv) {
 
       if (xmosload) {
 #ifdef WINDOWS
+          //re enumearation on windows is not supported as the new DFU interface would not be attached to winusb
+          //this would require the bsos implementation and usb switching dac8 usb to v2.1
           if (BCDdevice >= 0x150) {
               printf("BCD version >= 150 : Please use Thesycon DFU utility to upgrade XMOS firmware\n");
               libusb_exit(NULL);
