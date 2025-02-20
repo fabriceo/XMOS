@@ -170,11 +170,31 @@
 									<listOptionValue builtIn="false" value="XCC_VERSION_MINOR=1"/>
 									<listOptionValue builtIn="false" value="__XCC_HAVE_FLOAT__=1"/>
 									<listOptionValue builtIn="false" value="_XSCOPE_PROBES_INCLUDE_FILE=&quot;/var/folders/nw/ppy210qs3r70rxy3cfb25kph0000gn/T//cckcxlpW.h&quot;"/>
+									<listOptionValue builtIn="false" value="__XMOS_LEGACY_C_CPP_COMPILER__=1"/>
+									<listOptionValue builtIn="false" value="__XMOS_XTC_VERSION_MAJOR__=15"/>
+									<listOptionValue builtIn="false" value="__XMOS_XTC_VERSION_MINOR__=3"/>
+									<listOptionValue builtIn="false" value="__XMOS_XTC_VERSION_PATCH__=0"/>
 								</option>
 								<option id="com.xmos.xc.compiler.option.include.paths.1605705894" name="com.xmos.xc.compiler.option.include.paths" superClass="com.xmos.xc.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include/xc&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include/clang&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/lib_logging/api}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/host_cli}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/host_cli/libusb}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/host_cli/libusb/Linux32}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/host_cli/libusb/Linux64}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/host_cli/libusb/OSX32}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/host_cli/libusb/OSX64}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/host_cli/libusb/OSXARM}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/host_cli/libusb/Rasp}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/host_cli/libusb/Win32}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/src/application}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/src/drivers}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/src/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/src/targets}&quot;"/>
 								</option>
 								<inputType id="com.xmos.cdt.xc.compiler.input.258634528" name="XC" superClass="com.xmos.cdt.xc.compiler.input"/>
 							</tool>
@@ -474,10 +494,30 @@
 									<listOptionValue builtIn="false" value="XCC_VERSION_MINOR=1"/>
 									<listOptionValue builtIn="false" value="__XCC_HAVE_FLOAT__=1"/>
 									<listOptionValue builtIn="false" value="_XSCOPE_PROBES_INCLUDE_FILE=&quot;/var/folders/nw/ppy210qs3r70rxy3cfb25kph0000gn/T//ccN4Ap6x.h&quot;"/>
+									<listOptionValue builtIn="false" value="__XMOS_LEGACY_C_CPP_COMPILER__=1"/>
+									<listOptionValue builtIn="false" value="__XMOS_XTC_VERSION_MAJOR__=15"/>
+									<listOptionValue builtIn="false" value="__XMOS_XTC_VERSION_MINOR__=3"/>
+									<listOptionValue builtIn="false" value="__XMOS_XTC_VERSION_PATCH__=0"/>
 								</option>
 								<option id="com.xmos.c.compiler.option.include.paths.169339208" name="com.xmos.c.compiler.option.include.paths" superClass="com.xmos.c.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include/clang&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/lib_logging/api}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/host_cli}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/host_cli/libusb}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/host_cli/libusb/Linux32}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/host_cli/libusb/Linux64}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/host_cli/libusb/OSX32}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/host_cli/libusb/OSX64}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/host_cli/libusb/OSXARM}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/host_cli/libusb/Rasp}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/host_cli/libusb/Win32}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/src/application}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/src/drivers}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/src/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/src/targets}&quot;"/>
 								</option>
 								<inputType id="com.xmos.cdt.c.compiler.input.c.1882899950" name="C" superClass="com.xmos.cdt.c.compiler.input.c"/>
 							</tool>
@@ -781,11 +821,31 @@
 									<listOptionValue builtIn="false" value="XCC_VERSION_MINOR=1"/>
 									<listOptionValue builtIn="false" value="__XCC_HAVE_FLOAT__=1"/>
 									<listOptionValue builtIn="false" value="_XSCOPE_PROBES_INCLUDE_FILE=&quot;/var/folders/nw/ppy210qs3r70rxy3cfb25kph0000gn/T//ccxVHK5G.h&quot;"/>
+									<listOptionValue builtIn="false" value="__XMOS_LEGACY_C_CPP_COMPILER__=1"/>
+									<listOptionValue builtIn="false" value="__XMOS_XTC_VERSION_MAJOR__=15"/>
+									<listOptionValue builtIn="false" value="__XMOS_XTC_VERSION_MINOR__=3"/>
+									<listOptionValue builtIn="false" value="__XMOS_XTC_VERSION_PATCH__=0"/>
 								</option>
 								<option id="com.xmos.cxx.compiler.option.include.paths.956824772" name="com.xmos.cxx.compiler.option.include.paths" superClass="com.xmos.cxx.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include/clang&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include/c++/v1&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/lib_logging/api}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/host_cli}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/host_cli/libusb}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/host_cli/libusb/Linux32}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/host_cli/libusb/Linux64}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/host_cli/libusb/OSX32}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/host_cli/libusb/OSX64}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/host_cli/libusb/OSXARM}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/host_cli/libusb/Rasp}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/host_cli/libusb/Win32}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/src/application}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/src/drivers}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/src/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/app_usb_aud_rtx/src/targets}&quot;"/>
 								</option>
 								<inputType id="com.xmos.cdt.cxx.compiler.input.cpp.2103892059" name="C++" superClass="com.xmos.cdt.cxx.compiler.input.cpp"/>
 							</tool>
