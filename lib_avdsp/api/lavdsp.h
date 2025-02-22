@@ -17,26 +17,26 @@
 
 #define XCUNSAFE unsafe
 
-// interfaces definition for accessing dsp configuration
-
 typedef struct avdsp_info_s {
     unsigned short tasksLaunched;
     unsigned short time[8];
 } avdsp_info_t;
 
+// interfaces definition for accessing dsp configuration
+
 interface avdsp_if {
-#if defined( AVDSP_RUNTIME ) && ( AVDSP_RUNTIME > 0 )
+#ifdef AVDSP_RUNTIME
+    //possibility to load one page of 64bytes into dsp opcode buffer.
     int loadCodePage(unsigned page, unsigned buf[16]);
 #endif
     int getInfo(avdsp_info_t info);
     int start();
     int stop();
+    int changeFS(int newFS);
+    int changeProgram(int newProg);
 };
 
 extern void lavdspMain(server interface avdsp_if avdspif, const int tasksMax);
-
-//used to declare a weak statement within .xc files
-#define AVDSP_WEAK(x) asm(".weak " #x ""); asm(".weak " #x ".nstackwords"); asm(".weak " #x ".maxcores"); asm(".weak " #x ".maxtimers"); asm(".weak " #x ".maxchanends")
 
 #else
 
@@ -60,20 +60,6 @@ extern void lavdspMain(server interface avdsp_if avdspif, const int tasksMax);
 #endif
 
 
-// base structure supporting the dsp control function.
-typedef struct avdsp_base_s {
-    unsigned fs;                //current sampling rate
-    unsigned samplesOfs;        //current offset in the samples table (second dimension)
-    unsigned started;           //0 when dsp treatment are is stoped
-    unsigned program;           //number of the current DSP program in use
-    unsigned tasks;             //number of running tasks with this program
-    unsigned tasksMax;          //max number of supported cores/tasks on the tile
-    int      samples[2*AVDSP_SAMPLES_MAX]; //table of samples I/O, twice size
-}avdsp_base_t;
-
-//record of data is declared in lavdsp.xc
-extern avdsp_base_t avdspBase;
-
 typedef union u64_u {
     unsigned
     long long  ull;
@@ -96,16 +82,36 @@ typedef union u32_u {
 } u32_t;
 
 
+// dsp tasks context
+struct lavdsp_tcb8_s {
+     unsigned * XCUNSAFE codePtr;    //adress of the code start for this core
+     unsigned time;                  //number of cpu instructions taken in the core for one cycle
+     char     * XCUNSAFE addr;       //adress of the task status (8bits access only) inside dspTasks.running
+};
+
+
 typedef struct lavdsp_tcb_s {
     u64_t runable;     //pattern of task required for the program. 8 bits per core required
     u64_t runlast;     //last known value of running
     u64_t running;     //status of the tasks . 8bits per core
-    struct {
-        unsigned * XCUNSAFE codePtr;   //adress of the code start for this core
-        unsigned time;                 //number of cpu instructions taken in the core for one sample
-        char * XCUNSAFE addr;          //adress of the task status (8bits access only) inside dspTasks.running
-    } inf[8];
+    struct lavdsp_tcb8_s inf[8];
 } lavdp_tcb_t;
+
+
+// base structure supporting the dsp control function.
+typedef struct avdsp_base_s {
+    lavdp_tcb_t tcb;
+    unsigned fs;                //current sampling rate
+    unsigned samplesOfs;        //current offset in the samples table (second dimension)
+    unsigned started;           //0 when dsp treatment are is stoped
+    unsigned program;           //number of the current DSP program in use
+    unsigned tasks;             //number of running tasks with this program
+    unsigned tasksMax;          //max number of supported cores/tasks on the tile
+    int      samples[2*AVDSP_SAMPLES_MAX]; //table of samples I/O, twice size
+}avdsp_base_t;
+
+//record of data is declared in lavdsp.xc
+extern avdsp_base_t avdspBase;
 
 
 //send a token to launch the dsp main task, if ready

@@ -57,7 +57,6 @@ typedef union pdata_u {
 static pdata_t d;
 
 
-
 static inline void program1(const int n){
     u64_t accu;
     int sample;
@@ -69,6 +68,7 @@ static inline void program1(const int n){
     sample = avdsp_saturateSample( accu.ll );
     avdsp_storeSample(sample, pBase, n+2);
 }
+
 
 //single task for treating the 2 samples with same program
 void program1_task1(){
@@ -160,6 +160,7 @@ int program2_Init(){
 //overload initialization symbol
 void avdspInit(){
 }
+
 
 void avdspTask1(){
     switch (avdspBase.program ) {

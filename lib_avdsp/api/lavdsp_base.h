@@ -2,7 +2,7 @@
  * lavdsp_inc.h
  *
  *  Created on: 19 févr. 2025
- *      Author: fabrice
+ *      Author: fabriceo
  */
 
 #ifndef LAVDSP_INC_H_
@@ -115,7 +115,7 @@ static inline void avdsp_gain(u64_t * accu, int gain){
             "maccu  %3,%4,%1,%2         \n\t"
             "ashr   %1,%3,32            \n\t"   //get sign of result and use it as msb
             "maccs  %1,%3,%0,%2         \n\t"
-            "lsats %1,%3,%5            \n\t"
+            "lsats %1,%3,%5             \n\t"
             "lextract %0,%1,%3,%5,32    \n\t"   //restore original format.
             "lextract %1,%3,%4,%5,32"
             :"+r"(accu->hl.hi),"+r"(accu->hl.lo)
