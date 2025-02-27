@@ -22,8 +22,8 @@ a mechanism of virtual switch is implemented to secure array access in sync with
 **structure**
 *lavdsp.h* is the main header containing the xc interfaces definition
 *lavdsp.xc* is the core application managing the task creation/deletion,
- synchronizing the DSP cores together and with the usb audio task via the chanend,
- and handling the requests from the main application send trough the XC interfaces.
+synchronizing the DSP cores together and with the usb audio task via the chanend,
+and handling the requests from the main application send trough the XC interfaces.
 *lavdsp_conf.h* is a specific file containing user custom application settings.
 *lavdsp_base.h* contains the library or component to be used to create a DSP pipelines.
 the *example* folder contains *lavdsp_user.c* which is a typical DSP program showcase. it includes 2 programs, 
