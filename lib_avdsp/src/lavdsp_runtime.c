@@ -6,28 +6,27 @@
  */
 
 #include "lavdsp_runtime.h"
-#include <string.h>     //get memcpy
-#include <xs1.h>        //get set_core_high_priority_off, set_thread_fast_mode_off
-#include <xclib.h>        //get set_core_high_priority_off, set_thread_fast_mode_off
+
+#include <string.h>         //get memcpy
+#include <xs1.h>            //get set_core_high_priority_off, set_thread_fast_mode_off
+#include <xclib.h>          //get set_core_high_priority_off, set_thread_fast_mode_off
 
 //extern void dspRunMasterXS2( );  //launch runtime on Master task
 //extern void dspRunSlaveXS2(struct lavdsp_tcb8_s * p);  //loop runtime waiting for a msync instruction by the master task, or mjoin in the end
 //extern int  dspRunPatchMant(int mant, int mant2);
-
 
 void dspRunMasterXS2( )  __attribute__ ((weak));
 void dspRunMasterXS2( ) { }
 void dspRunSlaveXS2(struct lavdsp_tcb8_s * p)  __attribute__ ((weak));
 void dspRunSlaveXS2(struct lavdsp_tcb8_s * p) { }
 
+avdsp_rt_t avdsprt;              //record of data shared with assembly avdspruntime
+
+
 void avdsp_rt_task(const int N) {
-    asm volatile("#avdsp_rt_task:");
+    asm volatile("#avdsp_rt_task%=:");
     if (N == 1) dspRunMasterXS2( );
-    else {
-        //set_core_high_priority_off();
-        //set_thread_fast_mode_off();
-        dspRunSlaveXS2(&avdspBase.tcb.inf[N-1]);
-    }
+    else dspRunSlaveXS2(&avdspBase.tcb.inf[N-1]);
 }
 
 #ifndef AVDSP_RUNTIME_SIZE
@@ -62,4 +61,11 @@ int avdsp_rt_loadCodePage(unsigned page, unsigned buf[16]){
     return result;
 }
 
+int avdsp_rt_setProgram(int prog){
+    return 1; //TODO numebr of tasks required
+}
+
+int  avdsp_rt_changeFS(unsigned newFS) {
+    return 0; //TODO
+};
 

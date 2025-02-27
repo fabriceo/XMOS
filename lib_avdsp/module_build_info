@@ -4,14 +4,19 @@ VERSION = 1.0.0
 
 DEPENDENT_MODULES = lib_logging
 
-MODULE_XCC_FLAGS = $(XCC_FLAGS) \
-                   -O3
+#generic compilation flag. O3 implies dual issue mode by default
+MODULE_XCC_FLAGS = $(XCC_FLAGS) -O3
 
+#no need for dual issue. size optimization is prefered for these files
+XCC_FLAGS_lavdsp.xc = 			$(MODULE_XCC_FLAGS) -Os -mno-dual-issue
+XCC_FLAGS_lavdsp_filters.c = 	$(MODULE_XCC_FLAGS) -Os -mno-dual-issue
+
+#possibility to configure the whole library in a "conf" file located in user application folder
 OPTIONAL_HEADERS += lavdsp_conf.h
 
 EXPORT_INCLUDE_DIRS = api
 
 INCLUDE_DIRS = $(EXPORT_INCLUDE_DIRS)
 
-SOURCE_DIRS = src examples
+SOURCE_DIRS = src src/xmos
  

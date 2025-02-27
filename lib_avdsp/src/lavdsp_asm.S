@@ -3,11 +3,18 @@
 // revisited by Fabriceo
 
 
-#if defined(__XS2A__) || defined(__XS3A__)
+//including main header to get AVDSP_MANT and  AVDSP_TASKS_MAX
+#include "lavdsp.h"
 
 #ifndef AVDSP_MANT
 #define AVDSP_MANT (28)
 #endif
+
+#ifndef AVDSP_MANT64
+#define AVDSP_MANT64 (AVDSP_MANT+31)
+#endif
+
+#if defined(__XS2A__) || defined(__XS3A__)
 
 #define NSTACKWORDS 8
 //.syntax default
@@ -82,7 +89,7 @@ avdsp_biquads:
 	retsp NSTACKWORDS
 
 	.cc_bottom avdsp_biquads.function
-	.set	avdsp_biquads.nstackwords,0
+	.set	avdsp_biquads.nstackwords,NSTACKWORDS
 	.globl	avdsp_biquads.nstackwords
 	.set	avdsp_biquads.maxcores,1
 	.globl	avdsp_biquads.maxcores
@@ -91,9 +98,7 @@ avdsp_biquads:
 	.set	avdsp_biquads.maxchanends,0
 	.globl	avdsp_biquads.maxchanends
 .Ltmp3:
-	.size	avdsp_biquads, .Ltmp3-avdsp_biquads
-
-	.typestring avdsp_biquads, "f{sll}(si,p(u(avdsp_biquad_coef_u){m(c){a(6:si)},m(padding8){sll}}),p(u(avdsp_biquad_states_u){m(padding8){sll},m(s){a(6:si)}}),ui)"
+	.size	avdsp_biquads, .Ltmp3 - avdsp_biquads
 
 #else
 #error

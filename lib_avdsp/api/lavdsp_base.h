@@ -47,22 +47,16 @@ typedef struct avdsp_delay_s {
 } avdsp_delay_t;
 
 
-//virtually switch the two samples array. To be done at each samples at fs
-static inline void avdsp_switchSampleOfs(avdsp_base_t * ptr) {
-    ptr->samplesOfs = (AVDSP_SAMPLES_MAX) - ptr->samplesOfs;
-}
-
-
 //return sample value from sample array at position "n"
-static inline int avdsp_loadSample(avdsp_base_t * ptr, const int n){
-    return ptr->samples[ ptr->samplesOfs + n ];
+static inline int avdsp_loadSample(const int n){
+    return avdspBase.samples[ avdspBase.samplesOfs + n ];
 }
 
 
 //load sample "n" into 64 bit accumulator, in Qx.y format
-static inline void avdsp_load(u64_t * accu, avdsp_base_t * ptr, const int n) {
+static inline void avdsp_load(u64_t * accu, const int n) {
     asm volatile("#avdsp_load:");
-    int sample  = avdsp_loadSample( ptr, n );
+    int sample  = avdsp_loadSample( n );
     accu->ll = 0;
     asm("linsert %0,%1,%2,%3,32":"+r"(accu->hl.hi),"+r"(accu->hl.lo):"r"(sample),"r"(AVDSP_MANT));
 }
@@ -79,9 +73,9 @@ static inline void avdsp_valueSample(u64_t * accu, int sample) {
 
 
 //load sample "n" and add it to the 64 bit accumulator, in Qx.y format
-static inline void avdsp_loadAdd(u64_t * accu, avdsp_base_t * ptr, const int n) {
+static inline void avdsp_loadAdd(u64_t * accu, const int n) {
     asm volatile("#avdsp_loadAdd:");
-    int sample  = avdsp_loadSample( ptr, n );
+    int sample  = avdsp_loadSample( n );
     u64_t accu2 = { .ll = 0 };
     asm("linsert %0,%1,%2,%3,32":"+r"(accu2.hl.hi),"+r"(accu2.hl.lo):"r"(sample),"r"(AVDSP_MANT));
     accu->ll += accu2.ll;
@@ -89,26 +83,31 @@ static inline void avdsp_loadAdd(u64_t * accu, avdsp_base_t * ptr, const int n) 
 
 
 //store a 32bit value in the sample array
-static inline void avdsp_storeSample(int sample, avdsp_base_t * ptr, const int n) {
-    ptr->samples[ ptr->samplesOfs + n ] = sample;
+static inline void avdsp_storeSample(int sample, const int n) {
+    avdspBase.samples[ avdspBase.samplesOfs + n ] = sample;
+}
+
+//copy a sample from the arry at position "source" to position "dest"
+static inline void avdsp_copySample(const int source, const int dest) {
+    avdspBase.samples[ avdspBase.samplesOfs + dest ] = avdspBase.samples[ avdspBase.samplesOfs + source ];
 }
 
 
 //store accu long long into sample array at position "n"
-static inline void avdsp_store(u64_t * accu, avdsp_base_t * ptr, const int n) {
+static inline void avdsp_store(u64_t * accu, const int n) {
     int sample;
     asm("lsats %0,%1,%2":"+r"(accu->hl.hi),"+r"(accu->hl.lo):"r"(AVDSP_MANT));
     asm("lextract %0,%1,%2,%3,32":"=r"(sample):"r"(accu->hl.hi),"r"(accu->hl.lo),"r"(AVDSP_MANT));
-    avdsp_storeSample(sample, ptr, n);
+    avdsp_storeSample(sample, n);
 }
 
 
-//multiply 64 bits accu by a signed gain coded Qx.y.
+//multiply 64 bits accu by a signed gain coded Qnm.
 //96 bits result is resized to fit 64bits and original format is kept.
-static inline void avdsp_gain(u64_t * accu, int gain){
+static inline void avdsp_gainQNM(u64_t * accu, int gain, const int MANT){
     asm volatile("#avdsp_gain:");
     int sign,zero=0;
-    asm volatile("# using %0 (sign)":"=r"(sign)); //used to force compiler to keep this register
+    asm volatile("# using %0 (sign)":"=r"(sign)); //used to force compiler to allocate a register
     asm volatile(
             "ashr   %3,%2,32            \n\t"   //get sign
             "mul    %3,%1,%3            \n\t"
@@ -119,21 +118,29 @@ static inline void avdsp_gain(u64_t * accu, int gain){
             "lextract %0,%1,%3,%5,32    \n\t"   //restore original format.
             "lextract %1,%3,%4,%5,32"
             :"+r"(accu->hl.hi),"+r"(accu->hl.lo)
-            : "r"(gain),"r"(sign),"r"(zero),"r"(AVDSP_MANT) );
+            : "r"(gain),"r"(sign),"r"(zero),"r"(MANT) );
 }
+
+//multiply 64 bits accu by a signed gain coded Qnm.
+//96 bits result is resized to fit 64bits and original format is kept.
+static inline void avdsp_gain(u64_t * accu, int gain){ avdsp_gainQNM( accu, gain, AVDSP_MANT); }
+
+//multiply 64 bits accu by a signed gain coded Q31 (between -1.0..+1.0).
+//96 bits result is resized to fit 64bits and original format is kept.
+static inline void avdsp_gainQ31(u64_t * accu, int gain){ avdsp_gainQNM( accu, gain, 31); }
 
 //apply a delay to the given sample
 static inline int avdsp_delaySample(int sample, avdsp_delay_t * dptr, u32_t * ptr ){
     asm volatile("#avdsp_delaySample:");
     int idx,val;
     asm volatile("# using %0 (idx) ,%1 (val)":"=r"(idx),"=r"(val));
-    asm volatile(
+    asm volatile(//".issue_mode dual\n\t"
             "ldw %1,%3[2]                   \n\t"   //load index
-            "{ ldw %2,%3[1] ; add %1,%1,1 } \n\t"   //load delay, and increment index
+            "ldw %2,%3[1] ; add %1,%1,1     \n\t"   //load delay, and increment index
             "lsu %2,%1,%2                   \n\t"   //check reaching end of buffer
             "neg %2,%2                      \n\t"   //create a 0 or FFFFFFFF mask depending on comparaison
             "and %1,%1,%2                   \n\t"   //clear index or let it ok
-            "{ stw %1,%3[2] ; mov %2,%0 }   \n\t"   //store new index
+            "stw %1,%3[2] ; mov %2,%0       \n\t"   //store new index
             "ldw %0,%4[%1]                  \n\t"   //load old sample
             "stw %2,%4[%1]                  \n\t"   //store new sample
             :"+r"(sample):"r"(idx),"r"(val),"r"(dptr),"r"(ptr));
@@ -145,13 +152,13 @@ static inline void avdsp_delay64(u64_t * accu, avdsp_delay_t * dptr, int * ptr )
     asm volatile("#avdsp_delay64:");
     int idx,val;
     asm volatile("# using %0 (idx) ,%1 (val)":"=r"(idx),"=r"(val));
-    asm volatile(
+    asm volatile(//".issue_mode dual          \n\t" //nodual mode finally
             "ldw %2,%4[1]                   \n\t"
-            "{ ldw %3,%4[0] ; add %2,%2,1 } \n\t"
+            "ldw %3,%4[0] ; add %2,%2,1     \n\t"
             "lsu %3,%2,%3                   \n\t"
             "neg %3,%3                      \n\t"
-            "{ and %2,%2,%3 ; mov %3,%0 }   \n\t"
-            "{ stw %2,%4[1] ; mov %2,%1 }   \n\t"
+            "and %2,%2,%3 ; mov %3,%0       \n\t"
+            "stw %2,%4[1] ; mov %2,%1       \n\t"
             "ldd %0,%1,%4[%1]               \n\t"
             "stw %3,%2,%4[%1]               \n\t"
             :"+r"(accu->hl.hi),"+r"(accu->hl.lo):"r"(idx),"r"(val),"r"(dptr),"r"(ptr));
