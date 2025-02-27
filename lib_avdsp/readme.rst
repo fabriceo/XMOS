@@ -6,6 +6,9 @@ a specific program dynamically into the xmos memory.
 
 a library of inline functions gives the possibility to create audio pipeline easily with 64bit accumulators.
 
+a first W.I.P. documentation is available here 
+https://docs.google.com/document/d/1MsjbmyHnwwfm1zyMP7-x5YklVr889vY-H3wwGKcLF8Q/edit?tab=t.0
+
 the library support the possibility to use dynamically different "dsp programs" and to update the DSP code according to sampling rate.
 the generic function load, store, gain, delay, biquads are available and easy to integrate.
 a DSP program can use multiple cores, with dynamic allocation (eg depending on sampling rate)
