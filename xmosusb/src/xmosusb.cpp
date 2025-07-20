@@ -602,8 +602,10 @@ int testvendor(int noprint){
 enum VendorCommands {
 /*D2H*/    VENDOR_AUDIO_MUTE  = 0xA0,  // force the DAC to mute by sending Zeros to the DAC I2S lines
 /*D2H*/    VENDOR_AUDIO_UNMUTE,        // restore the normal mode
+
 /*D2H*/    VENDOR_AUDIO_STOP,          // stop any data flow between I2S, USB, SPDIF : ready for flash access or dsp program changes
 /*D2H*/    VENDOR_AUDIO_START,         // restore the normal mode
+
 /*D2H*/    VENDOR_AUDIO_HANDLER,       // stop the exchanges between USB and DAC and SPDIF receivers/transmitters and treat specific calls
 /*D2H*/    VENDOR_AUDIO_FINISH,        // restart normal exchanges
 
@@ -633,6 +635,10 @@ enum VendorCommandsDsp {
 
 
 unsigned int param1   = 0;                  // command line parameter
+
+
+static const int tableFreq[8] = { 44100, 48000, 88200, 96000, 176400,192000, 352800,384000 };
+
 
 //include the files required depending on comand line options
 #if defined ( SAMD_CMD ) && ( SAMD_CMD > 0 )
@@ -816,7 +822,7 @@ int main(int argc, char **argv) {
   libusb_init();
 
   // searching for usb device
-  r = find_usb_device(deviceID, listdev, 2); // if listdev = 1, this will print all devices found
+  r = find_usb_device(deviceID, listdev, 1+(listdev==1)); // if listdev = 1, this will print all devices found
   if (r < 0)  {
       if(!listdev) {
           fprintf(stderr, "Could not find a valid usb device [%d]\n",deviceID);

@@ -13,6 +13,7 @@ unsigned int dspwrite = 0;
 unsigned int dspread  = 0;
 unsigned int dspreadmem = 0;
 unsigned int dspreadheader = 0;
+unsigned int dspstatus = 0;
 unsigned int readflash= 0;
 unsigned int eraseflash=0;
 unsigned int changevidpid = 0;
@@ -148,11 +149,57 @@ void dsp_printcmd()  {
     fprintf(stderr, "--dspread  slot        load DSP memory with a program stored in flash location.\n");    // load xmos dsp memory content with flash slot 1..15
     fprintf(stderr, "--dspreadmem addr      read data from DSP memory location.\n");  // read 16 word of data in the dsp data area
     fprintf(stderr, "--dspheader            read DSP program header information from DSP memory area.\n");        // read dsp header of dsp program in memory to provide some info about it
+    fprintf(stderr, "--dspstatus            show core cpu load.\n");
     fprintf(stderr, "--dspprog  val         force loading (and starting) a DSP program from flash location\n");     // set the dsp program number in the front panel menu settings and load it from flash
     fprintf(stderr, "--flashread page       read 64byte of data from flash data partition\n");   // read 64 bytes of flash in data partition at adress page*64
     fprintf(stderr, "--flasherase sector    erase 4096 bytes of a flash sector in data partition.\n");// erase a sector (4096bytes=64pages)  in data partition (starting 0)
     fprintf(stderr, "--changevidpid hex8    set a temporary USB VIDPID and reset the XMOS.\n");  // setup a new vid & pid in volatile memory and reboot the device
 }
+
+
+void printDspStatus(){
+    printf("decimation factor   = %d\n", data[23] );
+    int maxTask = data[24];
+    printf("maximum DSP tasks   = %d\n",    (maxTask) );
+    int maxDsp = 100000000/tableFreq[data[1] & 7];
+    int totalInst = 0;
+    int totalCores = 0;
+    if (maxTask) {
+        printf("DSP program number  = %d\n", data[3]);
+        for (int i=0; i<= maxTask; i++)
+            if (i != maxTask) {
+                int inst = loadShort(25+i+i);
+                if (inst == 0) {
+                    printf("DSP Core %d: unused\n", i+1 );
+                } else
+                if (inst == -1) {
+                    printf("DSP Core %d: AES\n", i+1 );
+                } else
+                if (inst < -1) {
+                    printf("DSP Core %d: External  %X\n", i+1,-inst );
+                } else {
+                    printf("DSP Core %d: load    = %d\n", i+1,inst );
+                    totalInst += inst;
+                    totalCores++;
+                }
+            } else {
+                int maxInst = loadShort(25+i+i);
+                maxDsp = loadShort(27+i+i);
+                printf("DSP max core load   = %d / %d = %3d%%fs\n", maxInst , maxDsp, (int)(maxInst*100.0/(float)maxDsp) );
+                if (totalCores>1)
+                    printf("DSP total load      = %d\n",totalInst);
+                int maxsize = loadUnsignedShort(29+i+i);
+                printf("DSP mem available   = %d words\n",maxsize);
+            }
+    }
+}
+void getDspStatus(){
+    libusb_control_transfer(devh, VENDOR_REQUEST_FROM_DEV,
+            VENDOR_GET_DEVICE_INFO, 0, 0, data, 64, 0);
+    printf("printing dsp status:\n");
+    printDspStatus();
+}
+
 
 int dsp_testcmd(int argc, char **argv, int argi) {
 
@@ -174,6 +221,9 @@ int dsp_testcmd(int argc, char **argv, int argi) {
     else
     if (strcmp(argv[argi], "--dspheader") == 0) {
         dspreadheader = 1; }
+    else
+    if (strcmp(argv[argi], "--dspstatus") == 0) {
+        dspstatus = 1; }
     else
     if (strcmp(argv[argi], "--dspprog") == 0) {
         if (argv[argi+1]) {
@@ -229,8 +279,9 @@ int dsp_executecmd() {
 
     if (dspload) {
         vendor_to_dev(VENDOR_AUDIO_STOP,0,0);
-        load_dsp_prog(filename);
+        int res = load_dsp_prog(filename);
         vendor_to_dev(VENDOR_AUDIO_START,0,0);
+        if (res == 0) getDspStatus();
     }
     else
     if (dspwrite) {
@@ -262,6 +313,10 @@ int dsp_executecmd() {
         dspReadHeader();
     }
     else
+    if (dspstatus) {
+        getDspStatus();
+    }
+    else
     if (readflash) {
         vendor_to_dev(VENDOR_AUDIO_STOP, 0, 0);
         vendor_to_dev(VENDOR_OPEN_FLASH,0,0);
@@ -290,7 +345,7 @@ int dsp_executecmd() {
             vendor_to_dev_data(VENDOR_TEST_VID_PID, 0, 0, data, 4); //VENDOR_RESET_DEVICE
             vendor_to_dev(VENDOR_RESET_DEVICE,0,0);
 			param1 = loadInt(0);
-			printf("vid pid = 0x%X\n",param1);
+			printf("device rebooting with vid pid = 0x%X\n",param1);
         } 
     } else return 0;
     return 1;

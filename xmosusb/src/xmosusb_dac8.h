@@ -37,8 +37,6 @@ unsigned int dacmute  = 0;
 unsigned int dacunmute= 0;
 unsigned int dacmode  = 0;
 
-static const int tableFreq[8] = { 44100, 48000, 88200, 96000, 176400,192000, 352800,384000 };
-
 static void printConfig(unsigned int conf){
     printf("%dhz, ",tableFreq[conf & 0b111]);
     switch (conf & 0b11000) {
@@ -52,6 +50,7 @@ static void printConfig(unsigned int conf){
     default: printf("32b\n"); break;
     }
 }
+
 // show some key information about the dac
 void getDacStatus(){
     printf("printing dac status:\n");
@@ -96,24 +95,14 @@ void getDacStatus(){
         printf("front panel volume  = muted (%ddB)\n", -(vol & 127) );
     else
         printf("front panel volume  = %ddB\n", -vol );
-    printf("\ndecimation factor   = %d\n", data[23] );
 	//DSP related section
     int maxTask = data[24];
-    printf("maximum DSP tasks   = %d\n",    (maxTask) );
-    int maxDsp = 100000000/i2sfreq;
     if (maxTask) {
-        printf("DSP program number  = %d\n", data[3]);
-        for (int i=0; i<= maxTask; i++)
-            if (i != maxTask)
-                 printf("DSP Core %d: load    = %d\n", i+1, loadShort(25+i+i));
-            else {
-                int maxInst = loadShort(25+i+i);
-                maxDsp = loadShort(27+i+i);
-                printf("DSP max load        = %d / %d = %d%%fs\n", maxInst , maxDsp, (int)(maxInst*100.0/(float)maxDsp) );
-                int maxsize = loadUnsignedShort(29+i+i);
-                printf("DSP mem available   = %d words\n",maxsize);
-            }
-    }
+        printf("\n");
+        printDspStatus();
+    } else
+        printf("decimation factor   = %d\n", data[23] );
+
 #if defined( SAMD_CMD ) && (SAMD_CMD > 0)
     if (progress) fwprogress(0,0);    // display a simple text message about the dac status from fw perspective
 #endif
