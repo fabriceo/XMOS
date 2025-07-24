@@ -118,8 +118,12 @@ typedef struct dspHeader_s {    // 11 words
 /*   */     unsigned short   maxOpcode;    // last op code number used in this program (to check compatibility with runtime)
 /* 7 */     int   freqMin;      // minimum frequency possible for this program, in raw format eg 44100
 /* 8 */     int   freqMax;      // maximum frequency possible for this program, in raw format eg 192000
-/* 9 */     unsigned usedInputs;   //bit mapping of all used inputs
-/* 10 */    unsigned usedOutputs;  //bit mapping of all used outputs
+/* 9-10 */  unsigned long long usedInputs;    // bit mapping of all used inputs  (max 64 in this version)
+/* 11-12 */ unsigned long long usedOutputs;   // bit mapping of all used outputs (max 64 in this version)
+/* 13 */    unsigned mantissa2;    //for integer runtime, this value (if not 0) provides the expected size of fractional part of accumulator
+/* 14 */    unsigned serialHash;    // hash code to enable 0dbFS output (otherwise -24db)
+/* 15 */    unsigned tileNum;       //number of the tile (0..7) only 8 supported here
+// other information not downloaded
         } dspHeader_t;
 
 
@@ -129,18 +133,25 @@ void dspReadHeader(){
     unsigned char * p = (unsigned char*)&header;
     libusb_control_transfer(devh, VENDOR_REQUEST_FROM_DEV,
             VENDOR_READ_DSP_MEM, 2, 0, p, sizeof(dspHeader_t), 0);
-    printf("total length = %d\n",header.totalLength);
-    if (header.totalLength) {
-        printf("data size    = %d\n",header.dataSize);
+    if ( ((header.head >> 16) == 1) && (header.totalLength) ){
+        printf("total length = %d\n",header.totalLength);
+        printf("data size    = %d max\n",header.dataSize);
         printf("checksum     = 0x%X\n",header.checkSum);
-        printf("num cores    = %d\n",header.numCores);
+        printf("num cores    = %d max\n",header.numCores);
         printf("version      = %X\n",header.version);
-        if (header.format)
-             printf("encoded int    %d.%d\n",(32-header.format),header.format);
-        else printf("encoded float\n");
+        if (header.format){
+            if (header.version > 0x120)
+                printf("encoded int    %d.%d, accu %d.%d\n",(32-header.format),header.format,(64-header.mantissa2),header.mantissa2);
+            else
+                printf("encoded int    %d.%d, accu 8.56\n",(32-header.format),header.format);
+        }else printf("encoded float number 32bits IEEE\n");
         printf("freq min     = %d (%d)\n",header.freqMin,dspTableFreq[header.freqMin]);
         printf("freq max     = %d (%d)\n",header.freqMax,dspTableFreq[header.freqMax]);
-    }
+        if ( (header.version > 0x120) && (header.serialHash) )
+            printf("hash serial  = %X\n",header.serialHash);
+    } else
+        printf("bad or no header found\n");
+    printf("\n");
 }
  
 void dsp_printcmd()  {
@@ -151,8 +162,8 @@ void dsp_printcmd()  {
     fprintf(stderr, "--dspheader            read DSP program header information from DSP memory area.\n");        // read dsp header of dsp program in memory to provide some info about it
     fprintf(stderr, "--dspstatus            show core cpu load.\n");
     fprintf(stderr, "--dspprog  val         force loading (and starting) a DSP program from flash location\n");     // set the dsp program number in the front panel menu settings and load it from flash
-    fprintf(stderr, "--flashread page       read 64byte of data from flash data partition\n");   // read 64 bytes of flash in data partition at adress page*64
-    fprintf(stderr, "--flasherase sector    erase 4096 bytes of a flash sector in data partition.\n");// erase a sector (4096bytes=64pages)  in data partition (starting 0)
+    fprintf(stderr, "--flashread page <N>   read N (optional) pages of 64byte of data from flash data partition\n");   // read 64 bytes of flash in data partition at adress page*64
+    fprintf(stderr, "--flasherase sector <N> erase N (optional) sectors of 4096 bytes in data partition.\n");// erase a sector (4096bytes=64pages)  in data partition (starting 0)
     fprintf(stderr, "--changevidpid hex8    set a temporary USB VIDPID and reset the XMOS.\n");  // setup a new vid & pid in volatile memory and reboot the device
 }
 
@@ -258,6 +269,7 @@ int dsp_testcmd(int argc, char **argv, int argi) {
         if (strcmp(argv[argi], "--flashread") == 0) {
             if (argv[argi+1]) {
                 param1 = atoi(argv[argi+1]);
+                if ( (argc >= (argi+2)) && (argv[argi+2]) ) param2 = atoi(argv[argi+2]); else param2 = 1;
             } else {
               fprintf(stderr, "No page specified for readflash option\n");
               exit( -1 ); }
@@ -266,6 +278,7 @@ int dsp_testcmd(int argc, char **argv, int argi) {
     if (strcmp(argv[argi], "--flasherase") == 0) {
         if (argv[argi+1]) {
             param1 = atoi(argv[argi+1]);
+            if ( (argc >= (argi+2)) && (argv[argi+2])) param2 = atoi(argv[argi+2]); else param2 = 1;
         } else {
           fprintf(stderr, "No sector specified for eraseflash option\n");
           exit(-1); }
@@ -320,20 +333,24 @@ int dsp_executecmd() {
     if (readflash) {
         vendor_to_dev(VENDOR_AUDIO_STOP, 0, 0);
         vendor_to_dev(VENDOR_OPEN_FLASH,0,0);
+        while(param2) {
         vendor_from_dev(VENDOR_READ_FLASH, param1, 0, data, 64);
         for (int i = 0; i<4; i++) {
             printf("%6X : ",param1*64+i*16);
             for (int j=0; j<16; j++) {
                 printf("%2X ",data[i*16+j]); }
             printf("\n"); }
+        param1++;param2--;
+        }
         vendor_to_dev(VENDOR_CLOSE_FLASH,0,0);
+        printf("\n");
         vendor_to_dev(VENDOR_AUDIO_START, 0, 0);
     }
     else
     if (eraseflash) {
         vendor_to_dev(VENDOR_AUDIO_STOP, 0, 0);
         vendor_to_dev(VENDOR_OPEN_FLASH,0,0);
-        vendor_from_dev(VENDOR_ERASE_FLASH, param1, 1, data, 1);
+        vendor_from_dev(VENDOR_ERASE_FLASH, param1, param2, data, 1);
         if (data[0]) printf("erase flash error num %d\n",data[0]);
         vendor_to_dev(VENDOR_CLOSE_FLASH,0,0);
         vendor_to_dev(VENDOR_AUDIO_START, 0, 0);
@@ -342,8 +359,8 @@ int dsp_executecmd() {
         printf("changing vid pid 0x%X\n",param1);
         if (param1) {
             storeInt(0,param1);
-            vendor_to_dev_data(VENDOR_TEST_VID_PID, 0, 0, data, 4); //VENDOR_RESET_DEVICE
-            vendor_to_dev(VENDOR_RESET_DEVICE,0,0);
+            vendor_to_dev_data(VENDOR_TEST_VID_PID, 0, 0, data, 4);
+            vendor_to_dev(VENDOR_RESET_DEVICE,0,0); //VENDOR_RESET_DEVICE
 			param1 = loadInt(0);
 			printf("device rebooting with vid pid = 0x%X\n",param1);
         } 

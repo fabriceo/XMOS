@@ -635,6 +635,7 @@ enum VendorCommandsDsp {
 
 
 unsigned int param1   = 0;                  // command line parameter
+unsigned int param2   = 0;                  // command line parameter
 
 
 static const int tableFreq[8] = { 44100, 48000, 88200, 96000, 176400,192000, 352800,384000 };
@@ -655,7 +656,7 @@ static const int tableFreq[8] = { 44100, 48000, 88200, 96000, 176400,192000, 352
 #endif
 
 
-int libusbinit(){
+int libusbinit(int verbose){
 #if defined(TUSBAUDIOAPI)
     gDrvApi.LoadByGUID(_T(TUSBAUDIO_MYGUID));
     TUsbAudioStatus st = gDrvApi.TUSBAUDIO_EnumerateDevices();
@@ -663,14 +664,14 @@ int libusbinit(){
 #else
 	const struct libusb_version* version;
 	version = libusb_get_version();
-	printf("\nThis utility is using libusb v%d.%d.%d.%d\n\n", version->major, version->minor, version->micro, version->nano);
+	if (verbose) printf("\nThis utility is using libusb v%d.%d.%d.%d\n", version->major, version->minor, version->micro, version->nano);
     if (libusb_init(NULL) < 0) return -1;  
 #endif
 	return 0;
 }
 
-void libusb_init() {
-    int r = libusbinit();
+void libusb_init(int verbose) {
+    int r = libusbinit(verbose);
     if (r < 0) {
       fprintf(stderr, "ERROR : Failed to initialise libusb...\n");
       exit(-1); }
@@ -819,7 +820,7 @@ int main(int argc, char **argv) {
 
   // now program is really starting
   // opening lib usb
-  libusb_init();
+  libusb_init(argc < 2);
 
   // searching for usb device
   r = find_usb_device(deviceID, listdev, 1+(listdev==1)); // if listdev = 1, this will print all devices found
