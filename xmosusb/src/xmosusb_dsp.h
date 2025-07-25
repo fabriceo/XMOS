@@ -7,6 +7,19 @@
  *
  *************/
 
+void dsp_printcmd()  {
+    fprintf(stderr, "--dspload  file        load a dsp binary file (opcodes) into DSP memory area.\n");    // send the file binary content (dsp opcode) to the xmos dsp working memory
+    fprintf(stderr, "--dspwrite slot        save the DSP memory area to permanent flash location.\n");    // save xmos dsp memory content to flash slot N (1..15)
+    fprintf(stderr, "--dspread  slot        load DSP memory with a program stored in flash location.\n");    // load xmos dsp memory content with flash slot 1..15
+    fprintf(stderr, "--dspreadmem addr      read data from DSP memory location.\n");  // read 16 word of data in the dsp data area
+    fprintf(stderr, "--dspheader            read DSP program header information from DSP memory area.\n");        // read dsp header of dsp program in memory to provide some info about it
+    fprintf(stderr, "--dspstatus            show core cpu load.\n");
+    fprintf(stderr, "--dspprog  val         force loading (and starting) a DSP program from flash location\n");     // set the dsp program number in the front panel menu settings and load it from flash
+    fprintf(stderr, "--flashread page <N>   read N (optional) pages of 64byte of data from flash data partition\n");   // read 64 bytes of flash in data partition at adress page*64
+    fprintf(stderr, "--flasherase sector <N> erase N (optional) sectors of 4096 bytes in data partition.\n");// erase a sector (4096bytes=64pages)  in data partition (starting 0)
+    fprintf(stderr, "--changevidpid hex8    set a temporary USB VIDPID and reset the XMOS.\n");  // setup a new vid & pid in volatile memory and reboot the device
+}
+// corresponding variables
 unsigned int dspload  = 0;
 unsigned int dspprog  = 0;
 unsigned int dspwrite = 0;
@@ -107,7 +120,7 @@ void dspReadMem(int addr){
 
 static const int dspTableFreq[] = { 8000, 16000, 24000, 32000, 44100, 48000, 88200, 96000, 176400,192000, 352800,384000, 705600, 768000 };
 
-typedef struct dspHeader_s {    // 11 words
+typedef struct dspHeader_s {    // only 16 words required here
 /* 0 */     int   head;
 /* 1 */     int   totalLength;  // the total length of the dsp program (in 32 bits words), rounded to upper 8bytes
 /* 2 */     int   dataSize;     // required data space for executing the dsp program (in 32 bits words)
@@ -154,18 +167,6 @@ void dspReadHeader(){
     printf("\n");
 }
  
-void dsp_printcmd()  {
-    fprintf(stderr, "--dspload  file        load a dsp binary file (opcodes) into DSP memory area.\n");    // send the file binary content (dsp opcode) to the xmos dsp working memory
-    fprintf(stderr, "--dspwrite slot        save the DSP memory area to permanent flash location.\n");    // save xmos dsp memory content to flash slot N (1..15)
-    fprintf(stderr, "--dspread  slot        load DSP memory with a program stored in flash location.\n");    // load xmos dsp memory content with flash slot 1..15
-    fprintf(stderr, "--dspreadmem addr      read data from DSP memory location.\n");  // read 16 word of data in the dsp data area
-    fprintf(stderr, "--dspheader            read DSP program header information from DSP memory area.\n");        // read dsp header of dsp program in memory to provide some info about it
-    fprintf(stderr, "--dspstatus            show core cpu load.\n");
-    fprintf(stderr, "--dspprog  val         force loading (and starting) a DSP program from flash location\n");     // set the dsp program number in the front panel menu settings and load it from flash
-    fprintf(stderr, "--flashread page <N>   read N (optional) pages of 64byte of data from flash data partition\n");   // read 64 bytes of flash in data partition at adress page*64
-    fprintf(stderr, "--flasherase sector <N> erase N (optional) sectors of 4096 bytes in data partition.\n");// erase a sector (4096bytes=64pages)  in data partition (starting 0)
-    fprintf(stderr, "--changevidpid hex8    set a temporary USB VIDPID and reset the XMOS.\n");  // setup a new vid & pid in volatile memory and reboot the device
-}
 
 
 void printDspStatus(){
@@ -201,6 +202,12 @@ void printDspStatus(){
                     printf("DSP total load      = %d\n",totalInst);
                 int maxsize = loadUnsignedShort(29+i+i);
                 printf("DSP mem available   = %d words\n",maxsize);
+                unsigned lastError = loadInt(31+i+i);
+                while (lastError) {
+                    unsigned err = lastError >> 24;;
+                    lastError <<= 8;
+                    printf("msg %2X : msg wip\n",err);
+                }
             }
     }
 }

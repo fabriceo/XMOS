@@ -7,6 +7,15 @@
  *
  ********* */
 
+void samd_printcmd() {
+    fprintf(stderr, "--samdload file        load file in SAMD device (front panel)\n");    // load the front panel flash with a samd binary program and reboot
+    fprintf(stderr, "--samdreflash          load embded firmware in SAMD device(front panel)\n");      // re-initiate flashing the front panel firmware with the binary file embeded in xmos source code.
+    fprintf(stderr, "--samdbootloader       enter SAMD in bootloader\n");   // enters samd into bootloader mode, to prepare for erasing and downloading new fw
+    fprintf(stderr, "--samdbootloaderversion\n");      // provide the text received when sending V# to the bootloader
+    fprintf(stderr, "--samdreset            reset cycle the SAMD device (front panel)\n");        // reinitialize dac application and cycle reset front panel
+    fprintf(stderr, "--samderase            erase SAMD device flash memory (front panel)\n");        // erase all samd flash
+}
+
 // variables used by "main"
 unsigned int samdload = 0;
 unsigned int samdreflash = 0;
@@ -161,16 +170,6 @@ void fwprogress(int exitstate, int getdev){
     }
     printf("\n");
 }
-
-void samd_printcmd() {
-    fprintf(stderr, "--samdload file        load file in SAMD device (front panel)\n");    // load the front panel flash with a samd binary program and reboot
-    fprintf(stderr, "--samdreflash          load embded firmware in SAMD device(front panel)\n");      // re-initiate flashing the front panel firmware with the binary file embeded in xmos source code.
-    fprintf(stderr, "--samdbootloader       enter SAMD in bootloader\n");   // enters samd into bootloader mode, to prepare for erasing and downloading new fw
-    fprintf(stderr, "--samdbootloaderversion\n");      // provide the text received when sending V# to the bootloader
-    fprintf(stderr, "--samdreset            reset cycle the SAMD device (front panel)\n");        // reinitialize dac application and cycle reset front panel
-    fprintf(stderr, "--samderase            erase SAMD device flash memory (front panel)\n");        // erase all samd flash
-}
-
 int samd_testcmd(int argc, char **argv, int argi) {
     if (strcmp(argv[argi], "--samdload") == 0) {
       if (argv[argi+1]) {

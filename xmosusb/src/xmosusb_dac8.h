@@ -32,6 +32,13 @@ const unsigned int firmware_141_bin[] =  {
  *
  ******* */
 
+void dac_printcmd() {
+    fprintf(stderr, "--dacstatus            provide details on the DAC internal statuses\n");        // return the main registers providing informations on the dac and data stream status
+    fprintf(stderr, "--dacmode  val         change de DAC mode 0 PureUSB, 1 USB/AES, 2 PureAES\n");     // set the dac mode with the value given. front panel informed
+    fprintf(stderr, "--dacmute              force 0 on I2S bus to DAC, low level command, front panel not informed\n");          // set the dac in mute till unmute
+    fprintf(stderr, "--dacunmute            restore normal mode of operation\n");        // unmute the dac
+}
+
 unsigned int dacstatus= 0;
 unsigned int dacmute  = 0;
 unsigned int dacunmute= 0;
@@ -109,13 +116,6 @@ void getDacStatus(){
 }
 
 
-
-void dac_printcmd() {
-    fprintf(stderr, "--dacstatus            provide details on the DAC internal statuses\n");        // return the main registers providing informations on the dac and data stream status
-    fprintf(stderr, "--dacmode  val         change de DAC mode 0 PureUSB, 1 USB/AES, 2 PureAES\n");     // set the dac mode with the value given. front panel informed
-    fprintf(stderr, "--dacmute              force 0 on I2S bus to DAC, low level command, front panel not informed\n");          // set the dac in mute till unmute
-    fprintf(stderr, "--dacunmute            restore normal mode of operation\n");        // unmute the dac
-}
 
 int dac_testcmd(int argc, char **argv, int argi) {
 
