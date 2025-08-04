@@ -119,7 +119,7 @@ void dspReadMem(int addr){
 }
 
 static const int dspTableFreq[] = { 8000, 16000, 24000, 32000, 44100, 48000, 88200, 96000, 176400,192000, 352800,384000, 705600, 768000 };
-
+#if 1
 typedef struct dspHeader_s {    // only 16 words required here
 /* 0 */     int   head;
 /* 1 */     int   totalLength;  // the total length of the dsp program (in 32 bits words), rounded to upper 8bytes
@@ -127,18 +127,34 @@ typedef struct dspHeader_s {    // only 16 words required here
 /* 3 */     unsigned checkSum;  // basic calculated value representing the sum of all opcodes used in the program
 /* 4 */     int   numCores;     // number of cores/tasks declared in the dsp program
 /* 5 */     int   version;      // version of the encoder used MAJOR, MINOR,BUGFIX
-/* 6 */     unsigned short   format;       // contains DSP_MANT used by encoder or 1 for float or 2 for double
-/*   */     unsigned short   maxOpcode;    // last op code number used in this program (to check compatibility with runtime)
-/* 7 */     int   freqMin;      // minimum frequency possible for this program, in raw format eg 44100
-/* 8 */     int   freqMax;      // maximum frequency possible for this program, in raw format eg 192000
-/* 9-10 */  unsigned long long usedInputs;    // bit mapping of all used inputs  (max 64 in this version)
-/* 11-12 */ unsigned long long usedOutputs;   // bit mapping of all used outputs (max 64 in this version)
-/* 13 */    unsigned mantissa2;    //for integer runtime, this value (if not 0) provides the expected size of fractional part of accumulator
+/* 6 */     int format;       // contains DSP_MANT used by encoder or 1 for float or 2 for double
+/* 7 */     int   maxOpcode;    // last op code number used in this program (to check compatibility with runtime)
+/* 8 */     int   freqMin;      // minimum frequency possible for this program, in raw format eg 44100
+/* 9 */     int   freqMax;      // maximum frequency possible for this program, in raw format eg 192000
+/* 10-11 */  unsigned long long usedInputs;    // bit mapping of all used inputs  (max 64 in this version)
+/* 12-13 */ unsigned long long usedOutputs;   // bit mapping of all used outputs (max 64 in this version)
 /* 14 */    unsigned serialHash;    // hash code to enable 0dbFS output (otherwise -24db)
-/* 15 */    unsigned tileNum;       //number of the tile (0..7) only 8 supported here
+/* 15 */    unsigned mantissa2;    //for integer runtime, this value (if not 0) provides the expected size of fractional part of accumulator
 // other information not downloaded
         } dspHeader_t;
 
+#else
+
+typedef struct dspHeader_s {    // 12 words old version
+/* 0 */     int   head;
+/* 1 */     int   totalLength;  // the total length of the dsp program (in 32 bits words), rounded to upper 8bytes
+/* 2 */     int   dataSize;     // required data space for executing the dsp program (in 32 bits words)
+/* 3 */     unsigned checkSum;  // basic calculated value representing the sum of all opcodes used in the program
+/* 4 */     int   numCores;     // number of cores/tasks declared in the dsp program
+/* 5 */     int   version;      // version of the encoder used MAJOR, MINOR,BUGFIX
+/* 6 */     unsigned short   format;       // contains DSP_MANT used by encoder or 1 for float or 2 for double
+/* 7 */     unsigned short   maxOpcode;    // last op code number used in this program (to check compatibility with runtime)
+/* 8 */     int   freqMin;      // minimum frequency possible for this program, in raw format eg 44100
+/* 9 */     int   freqMax;      // maximum frequency possible for this program, in raw format eg 192000
+/* 10 */    unsigned usedInputs;   //bit mapping of all used inputs
+/* 11 */    unsigned usedOutputs;  //bit mapping of all used outputs
+        } dspHeader_t;
+#endif
 
 // read the header of the dsp program loaded in xmos ram memory
 void dspReadHeader(){
