@@ -19,8 +19,12 @@
 
 #if defined(__APPLE__)
 #define SLEEP(n) system("sleep " #n)
+#include <unistd.h>
+#define SLEEPMS(n) usleep((n)*1000)
 #elif defined(__linux__)
 #define SLEEP(n) system("sleep " #n)
+#include <unistd.h>
+#define SLEEPMS(n) usleep((n)*1000)
 #else // aka windows :)
 // REQUIRES MinGW64.
 // installer available at :
@@ -30,6 +34,7 @@
 // and type mingw32-make or gmake
 #include "windows.h"
 #define SLEEP(n) Sleep(1000*n)
+#define SLEEPMS(n) Sleep(n)
 #define WINDOWS 1
 #endif
 

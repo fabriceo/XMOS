@@ -119,7 +119,7 @@ void dspReadMem(int addr){
 }
 
 static const int dspTableFreq[] = { 8000, 16000, 24000, 32000, 44100, 48000, 88200, 96000, 176400,192000, 352800,384000, 705600, 768000 };
-#if 1
+#if 1 // new header
 typedef struct dspHeader_s {    // only 16 words required here
 /* 0 */     int   head;
 /* 1 */     int   totalLength;  // the total length of the dsp program (in 32 bits words), rounded to upper 8bytes
@@ -183,7 +183,14 @@ void dspReadHeader(){
     printf("\n");
 }
  
-
+const char * errMsg[] = {
+        "",
+        "code in xmos memory not valid",
+        "code loaded in xmos memory is valid",
+        "dsp runtime-init failed : suberr",
+        "program not found in xmos flash at",
+        "program successfully written in flash at"
+};
 
 void printDspStatus(){
     printf("decimation factor   = %d\n", data[23] );
@@ -222,15 +229,25 @@ void printDspStatus(){
                 while (lastError) {
                     unsigned err = lastError >> 24;;
                     lastError <<= 8;
-                    printf("msg %2X : msg wip\n",err);
+                    int errm = err, errn=-1;
+                    if      ((err & 0xF8) == 8 )  { errm = 3; errn = err & 7; }
+                    else if ((err & 0xFC) == 16 ) { errm = 4; errn = err & 3; }
+                    else if ((err & 0xFC) == 20 ) { errm = 5; errn = err & 3; }
+                    if (err) {
+                        if (errn>=0) printf("msg %2X : %s %d\n",err,errMsg[errm],errn);
+                        else printf("msg %2X : %s\n",err,errMsg[errm]);
+                    }
                 }
+                unsigned saturation = data[35+i+i];
+                if (saturation) printf("DSP saturation      = %ddB\n",saturation);
             }
     }
 }
 void getDspStatus(){
+    printf("printing dsp status:\n");
+    SLEEPMS(100);
     libusb_control_transfer(devh, VENDOR_REQUEST_FROM_DEV,
             VENDOR_GET_DEVICE_INFO, 0, 0, data, 64, 0);
-    printf("printing dsp status:\n");
     printDspStatus();
 }
 
