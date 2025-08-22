@@ -92,14 +92,14 @@ void getDacStatus(){
     printf("USB Audio config    = 0x%2X ", data[2]); printConfig(data[2]);
     printf("Sound presence      = 0x%2X\n", data[5]);
     printf("trigger/sleep       = 0x%2X\n", data[6]);
-    short vol= (signed char)data[7];
-    if (vol & 128)
-        printf("usb volume          = muted (%ddB)\n", -(vol & 127) );
+    short vol= (data[7] & 127);
+    if (data[7] & 128)
+        printf("usb volume          = muted (%ddB)\n", -vol );
     else
         printf("usb volume          = %ddB\n", -vol );
-    vol= (signed char)data[8];
-    if (vol & 128)
-        printf("front panel volume  = muted (%ddB)\n", -(vol & 127) );
+    vol= data[8] & 127;
+    if (data[8] & 128)
+        printf("front panel volume  = muted (%ddB)\n", -vol );
     else
         printf("front panel volume  = %ddB\n", -vol );
 	//DSP related section

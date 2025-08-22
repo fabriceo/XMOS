@@ -239,7 +239,7 @@ void printDspStatus(){
                     }
                 }
                 unsigned saturation = data[35+i+i];
-                if (saturation) printf("DSP saturation      = %ddB\n",saturation);
+                if (saturation) printf("DSP saturation max  = %ddB\n",saturation);
             }
     }
 }
