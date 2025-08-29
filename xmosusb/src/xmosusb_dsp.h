@@ -310,6 +310,9 @@ int dsp_testcmd(int argc, char **argv, int argi) {
             if (argv[argi+1]) {
                 param1 = atoi(argv[argi+1]);
                 if ( (argc >= (argi+2)) && (argv[argi+2]) ) param2 = atoi(argv[argi+2]); else param2 = 1;
+                if (param2 > 64) {
+                    fprintf(stderr, "Maximum 64 pages allowed\n");
+                    exit(-1); }
             } else {
               fprintf(stderr, "No page specified for readflash option\n");
               exit( -1 ); }
@@ -319,6 +322,9 @@ int dsp_testcmd(int argc, char **argv, int argi) {
         if (argv[argi+1]) {
             param1 = atoi(argv[argi+1]);
             if ( (argc >= (argi+2)) && (argv[argi+2])) param2 = atoi(argv[argi+2]); else param2 = 1;
+            if (param2 > 32) {
+                fprintf(stderr, "Maximum 32 sectors allowed\n");
+                exit(-1); }
         } else {
           fprintf(stderr, "No sector specified for eraseflash option\n");
           exit(-1); }
