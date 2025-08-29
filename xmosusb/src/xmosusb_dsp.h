@@ -169,14 +169,14 @@ void dspReadHeader(){
         printf("num cores    = %d max\n",header.numCores);
         printf("version      = %X\n",header.version);
         if (header.format){
-            if (header.version > 0x120)
+            if (header.version >= 0x120)
                 printf("encoded int    %d.%d, accu %d.%d\n",(32-header.format),header.format,(64-header.mantissa2),header.mantissa2);
             else
                 printf("encoded int    %d.%d, accu 8.56\n",(32-header.format),header.format);
         }else printf("encoded float number 32bits IEEE\n");
         printf("freq min     = %d (%d)\n",header.freqMin,dspTableFreq[header.freqMin]);
         printf("freq max     = %d (%d)\n",header.freqMax,dspTableFreq[header.freqMax]);
-        if ( (header.version > 0x120) && (header.serialHash) )
+        if ( (header.version >= 0x120) && (header.serialHash) )
             printf("hash serial  = %X\n",header.serialHash);
     } else
         printf("bad or no header found\n");
@@ -335,7 +335,7 @@ int dsp_testcmd(int argc, char **argv, int argi) {
 }
 
 int dsp_executecmd() {
-
+    if (0 == checkVersion(0x162)) return 0;
     if (dspload) {
         vendor_to_dev(VENDOR_AUDIO_STOP,0,0);
         int res = load_dsp_prog(filename);

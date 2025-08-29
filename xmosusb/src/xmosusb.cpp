@@ -650,6 +650,11 @@ unsigned int param2   = 0;                  // command line parameter
 
 static const int tableFreq[8] = { 44100, 48000, 88200, 96000, 176400,192000, 352800,384000 };
 
+int checkVersion(unsigned bcd) {
+    if (BCDdevice >= bcd) return 1;
+    fprintf(stderr,"Error: cannot execute this command on device version %X\n",BCDdevice);
+    return 0;
+}
 
 //include the files required depending on comand line options
 #if defined ( SAMD_CMD ) && ( SAMD_CMD > 0 )
