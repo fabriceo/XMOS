@@ -51,6 +51,9 @@ static inline int avdspFrequencyFromIndex(enum avdspFreqs_e freqIndex){
 
 typedef struct avdsp_rt_s {
     unsigned * dataPtr;         //location of the data space
+    unsigned fsIndex;           //index of the current frequency, 0 at fsMin
+    unsigned fsIndexMin;        //value of the minimum frequency, in the avdspFreqs_e
+    unsigned fsIndexMax;        //value of the maximum frequency, in the avdspFreqs_e
     int      volumeMaster;      //represent the user selected master volume (q31 signed but positive)
     unsigned saturationVolume;
     unsigned saturationFlag;    //temporary 1 when a core is detecting saturation

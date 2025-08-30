@@ -51,7 +51,8 @@ const int numberVolumes = 2;
 
 //consolidate all programs data area into a single record
 typedef union pdata_u {
-    u32_t    volumes[numberVolumes];                  //same variable for 2 programs
+    int      samples[2*AVDSP_MAX_SAMPLES];          //table of samples I/O, twice size
+    u32_t    volumes[numberVolumes];                //same variable for the 2 programs
     p1data_t p1;
     p2data_t p2;
 } pdata_t;
@@ -60,36 +61,43 @@ static pdata_t d;
 
 
 static inline void program1(const int n, const int source, const int dest){
-    asm volatile(".issue_mode dual\n\t");
+    //defining a local 64 bits accumulator
     u64_t accu;
-    int sample;
     //load sample into accumulator
-    avdsp_load( &accu, source );
+    avdsp_loadSample( &accu, source );
     //compute biquad
-    accu.ll = avdsp_biquads( accu.hl.hi, d.p1.bqc, d.p1.bqs[n], d.p1.bqsections );
-    avdsp_gainQ31( & accu , d.volumes[n].i );
-    sample = avdsp_saturateSample( accu.ll );
-    avdsp_storeSample(sample, dest );
+    accu.ll = avdsp_biquads(accu.hl.hi,     //only msb part of original accu is kept
+                            d.p1.bqc,       //pointer of the computed coefficients
+                            d.p1.bqs[n],    //pointer on the biquad states location
+                            d.p1.bqsections );  //number of biquads section to compute
+    //apply a gain on the accumulator, coded in q31 (-1...+1)
+    avdsp_gainQ31( &accu , d.volumes[n].i );
+    //saturate accumulator between -1...+1 in case of overshoot in biquads
+    int sample = avdsp_saturateValueQ31( accu.ll );
+    //storing result in the sample array
+    avdsp_writeSample(sample, dest );
 }
 
-#define USBOUT_L 2
+
+//helper definition of the I/O in the sample array
+#define USBOUT_L 2      //from usb host, left channel
 #define USBOUT_R 3
-#define DAC_L 4
+#define DAC_L 4         //to dac left
 #define DAC_R 5
-#define USBIN_L 6
+#define USBIN_L 6       //to usb host
 #define USBIN_R 7
+
 
 //single task for treating the Left and Right channel with same program
 void program1_task1(){
     asm volatile("#program1_task1:");
-    if (pBase->started == 0) return;
     //treat USB Left to DAC left
     program1( 0, USBOUT_L, DAC_L );
     //treat USB Right to DAC right
     program1( 1, USBOUT_R, DAC_R );
     //perform a loopback on USB side on left channel , for providing a reference during tests
     avdsp_copySample( USBOUT_L, USBIN_L );
-    //perform a loopback on USB side on right channel , to provide visibility on the treatment done
+    //to provide visibility on the treatment done to usb host
     avdsp_copySample( DAC_R, USBIN_R );
 
 }
@@ -97,7 +105,7 @@ void program1_task1(){
 
 //the routines required when frequency is changing
 void program1_changeFS(int newFS) {
-    pBase->fs = newFS;
+    asm volatile("#program1_changeFS:");
     //recompute all biquads
     int sections = avdsp_calcFiltersFS( d.p1.bqdef, d.p1.bqc, sizeof(d.p1.bqc)/sizeof(d.p1.bqc[0]), newFS );
     d.p1.bqsections = sections;
@@ -107,8 +115,10 @@ void program1_changeFS(int newFS) {
 
 int program1_init(){
     //clear our data record
-    asm volatile("#program1_Init:");
+    asm volatile("#program1_init:");
     memset(&d.p1,0,sizeof(d.p1));
+    avdspBase.samplesOfs = 0;
+    avdspBase.samplePtr = d.samples;
     return 1; //one task
 }
 
@@ -117,28 +127,25 @@ int program1_init(){
 
 
 static inline void program2(const int n, const int source, const int dest) {
-    asm volatile(".issue_mode dual\n\t");
     u64_t accu;
-    int sample;
     //load sample into accumulator
-    avdsp_load( &accu, source );
+    avdsp_loadSample( &accu, source );
     //compute biquad
     accu.ll = avdsp_biquads( accu.hl.hi, d.p2.bqc, d.p2.bqs[n], d.p2.bqsections[n] );
     //apply gain on accumulator with volume code q31
     avdsp_gainQ31( &accu, d.volumes[n].i);
-    //apply gain on accumulator
+    //apply additional gain on accumulator (-6db here)
     avdsp_gain( &accu, qnmdb( -6.0 ));
     //convert to a 32bit saturated sample
-    sample = avdsp_saturateSample( accu.ll );
+    int sample = avdsp_saturateValueQ31( accu.ll );
     //apply delay
     sample = avdsp_delaySample( sample, &d.p2.delay[n], d.p2.delayLines[n]);
-    avdsp_storeSample(sample, dest);
+    avdsp_writeSample(sample, dest);
 }
 
 
 void program2_task1(){
     asm volatile("#program2_task1:");
-    if (pBase->started == 0) return;
     program2( 0, USBOUT_L, DAC_L );
     //perform a loopback on USB side on left channel , for providing a reference during tests
     avdsp_copySample( USBOUT_L, USBIN_L );
@@ -146,9 +153,8 @@ void program2_task1(){
 
 void program2_task2(){
     asm volatile("#program2_task2:");
-    if (pBase->started == 0) return;
     program2( 1, USBOUT_R, DAC_R );
-    //perform a loopback on USB side on right channel , to provide visibility on the treatment done
+    //provides visibility on the treatment done
     avdsp_copySample( DAC_R, USBIN_R );
 }
 
@@ -176,17 +182,17 @@ int program2_init(){
     //compute maximum number of samples for each delay line.
     d.p2.delay[0].max = sizeof(d.p2.delayLines[0])/4;
     d.p2.delay[1].max = sizeof(d.p2.delayLines[1])/4;
+    avdspBase.samplesOfs = 0;
+    avdspBase.samplePtr = d.samples;
     return 2; //2 tasks
 }
 
 
 
 void avdspTask1(){
-    while (1) {
-        switch (avdspBase.program ) {
-        case 1: { program1_task1(); break; }
-        case 2: { program2_task1(); break; }
-        }
+    switch (avdspBase.program ) {
+    case 1: { program1_task1(); break; }
+    case 2: { program2_task1(); break; }
     }
 }
 

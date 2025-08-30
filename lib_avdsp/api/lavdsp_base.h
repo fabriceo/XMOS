@@ -48,57 +48,58 @@ typedef struct avdsp_delay_s {
 
 
 //return sample value from sample array at position "n"
-static inline int avdsp_loadSample(const int n){
-    return avdspBase.samples[ avdspBase.samplesOfs + n ];
+static inline int avdsp_readSample(const int n){
+    return avdspBase.samplePtr[ avdspBase.samplesOfs + n ];
 }
 
+
+//load a 32 bit value coded Q1.31 (typically an audio sample) into given 64 bit accumulator, in Qx.y format
+static inline void avdsp_loadValueQ31(u64_t * accu, int value) {
+    asm volatile("#avdsp_loadValueQ31:");
+    accu->hl.hi = value >> (63-AVDSP_MANT64);
+    accu->hl.lo = value << (AVDSP_MANT64-31);
+}
+
+//load a 32 bit value coded Q4.28 (typically a gain value or coeficient) into given 64 bit accumulator, in Qx.y format
+static inline void avdsp_loadValue(u64_t * accu, int value) {
+    asm volatile("#avdsp_loadValue:");
+    accu->hl.hi = value >> (32+AVDSP_MANT-AVDSP_MANT64);
+    accu->hl.lo = value << (AVDSP_MANT64-AVDSP_MANT);
+}
 
 //load sample "n" into 64 bit accumulator, in Qx.y format
-static inline void avdsp_load(u64_t * accu, const int n) {
-    asm volatile("#avdsp_load:");
-    int sample  = avdsp_loadSample( n );
-    accu->ll = 0;
-    asm("linsert %0,%1,%2,%3,32":"+r"(accu->hl.hi),"+r"(accu->hl.lo):"r"(sample),"r"(AVDSP_MANT));
+static inline void avdsp_loadSample(u64_t * accu, const int n) {
+    asm volatile("#avdsp_loadSample:");
+    avdsp_valueQ31( accu , avdsp_readSample( n ) );
 }
-
-
-
-//load a 32 bit value coded Q1.31 (as a sample) into 64 bit accumulator, in Qx.y format
-static inline void avdsp_valueSample(u64_t * accu, int sample) {
-    asm volatile("#avdsp_valueQ31:");
-    accu->ll = 0;
-    asm("linsert %0,%1,%2,%3,32":"+r"(accu->hl.hi),"+r"(accu->hl.lo):"r"(sample),"r"(AVDSP_MANT));
-}
-
 
 
 //load sample "n" and add it to the 64 bit accumulator, in Qx.y format
-static inline void avdsp_loadAdd(u64_t * accu, const int n) {
-    asm volatile("#avdsp_loadAdd:");
-    int sample  = avdsp_loadSample( n );
-    u64_t accu2 = { .ll = 0 };
-    asm("linsert %0,%1,%2,%3,32":"+r"(accu2.hl.hi),"+r"(accu2.hl.lo):"r"(sample),"r"(AVDSP_MANT));
-    accu->ll += accu2.ll;
+static inline void avdsp_loadAddSample(u64_t * accu, const int n) {
+    asm volatile("#avdsp_loadAddSample:");
+    u64_t temp;
+    avdsp_loadSample( temp, n );
+    accu->ll += temp.ll;
 }
 
 
 //store a 32bit value in the sample array
-static inline void avdsp_storeSample(int sample, const int n) {
-    avdspBase.samples[ avdspBase.samplesOfs + n ] = sample;
+static inline void avdsp_writeSample(int sample, const int n) {
+    avdspBase.samplePtr[ avdspBase.samplesOfs + n ] = sample;
 }
 
-//copy a sample from the arry at position "source" to position "dest"
+//copy a sample from the array at position "source" to position "dest"
 static inline void avdsp_copySample(const int source, const int dest) {
-    avdspBase.samples[ avdspBase.samplesOfs + dest ] = avdspBase.samples[ avdspBase.samplesOfs + source ];
+    avdspBase.samplePtr[ avdspBase.samplesOfs + dest ] = avdspBase.samplePtr[ avdspBase.samplesOfs + source ];
 }
 
 
 //store accu long long into sample array at position "n"
-static inline void avdsp_store(u64_t * accu, const int n) {
+static inline void avdsp_storeSample(u64_t * accu, const int n) {
     int sample;
-    asm("lsats %0,%1,%2":"+r"(accu->hl.hi),"+r"(accu->hl.lo):"r"(AVDSP_MANT));
-    asm("lextract %0,%1,%2,%3,32":"=r"(sample):"r"(accu->hl.hi),"r"(accu->hl.lo),"r"(AVDSP_MANT));
-    avdsp_storeSample(sample, n);
+    asm("lsats %0,%1,%2":"+r"(accu->hl.hi),"+r"(accu->hl.lo):"r"(AVDSP_MANT64-32));
+    asm("lextract %0,%1,%2,%3,32":"=r"(sample):"r"(accu->hl.hi),"r"(accu->hl.lo),"r"(AVDSP_MANT64-32));
+    avdsp_writeSample(sample, n);
 }
 
 
@@ -176,11 +177,12 @@ extern long long avdsp_biquads(
 
 //saturate accumulator so that 64bits value is between -1..+1 without changing format
 static inline void avdsp_saturate(u64_t * accu) {
-    asm("lsats %0,%1,%2":"+r"(accu->hl.hi),"+r"(accu->hl.lo):"r"(AVDSP_MANT));
+    asm("lsats %0,%1,%2":"+r"(accu->hl.hi),"+r"(accu->hl.lo):"r"(AVDSP_MANT64-32));
 }
 
+
 //return a 32bits value between -1..+1 from a 64bit value
-static inline int avdsp_saturateSample(long long accu) {
+static inline int avdsp_saturateValueQ31(long long accu) {
     int ah = (long long)(accu >> 32);
     unsigned al = accu & 0xFFFFFFFF;
     asm("lsats %0,%1,%2":"+r"(ah),"+r"(al):"r"(AVDSP_MANT));

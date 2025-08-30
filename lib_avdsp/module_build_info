@@ -18,5 +18,5 @@ EXPORT_INCLUDE_DIRS = api
 
 INCLUDE_DIRS = $(EXPORT_INCLUDE_DIRS)
 
-SOURCE_DIRS = src src/xmos
+SOURCE_DIRS = src src/xmos_lib
  

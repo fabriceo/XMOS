@@ -1,45 +1,46 @@
-all:	testlibusb xmosusb Makefile
-	@echo done, to generate all dac8 upgrade utilities type : make dac8
+all:	testlibusb testlibusbx86 xmosusb Makefile
+	@echo done
 	
 xmos:	xmosusb Makefile
 	@echo xmosusb done
 
-dac8:	xmosusb Makefile dac8pro dac8stereo
-	@echo dac8 done
+#libusb is installed with homebrew arm in the new opt/homebrew folder and is statically linked. no need for dylib file.
+LIBUSBFOLDERARM = /opt/homebrew/Cellar/libusb/1.0.29
+#libusb is installed with homebrew x86_64 in the former folder /usr/local and is statically linked.
+LIBUSBFOLDERX86 = /usr/local/Cellar/libusb/1.0.29
+LIBUSBARM = -I$(LIBUSBFOLDERARM)/include/libusb-1.0 $(LIBUSBFOLDERARM)/lib/libusb-1.0.a 
+LIBUSBX86 = -I$(LIBUSBFOLDERX86)/include/libusb-1.0 $(LIBUSBFOLDERX86)/lib/libusb-1.0.a 
+FLAGS  = -lobjc -Wl,-framework,IOKit -Wl,-framework,CoreFoundation -Wl,-framework,Security
 
-#libusb is installed with brew and is statically linked. no need for dylib file.
+OSXX86 = -target x86_64-apple-macos10.13 #-arch x86_64 
+OSXARM = -target arm64-apple-macos15 # so far all ARM silicon product support sequoia macos15
 
-LIBUSBFOLDER = /opt/homebrew/Cellar/libusb/1.0.27
-LIBUSB = -I$(LIBUSBFOLDER)/include/libusb-1.0 $(LIBUSBFOLDER)/lib/libusb-1.0.a 
-FLAGS  = -lobjc -Wl,-framework,IOKit -Wl,-framework,CoreFoundation -Wl,-framework,Security #-arch x86_64 
 
-xmosusb:	../src/xmosusb.cpp ../src/xmosusb_samd.h ../src/xmosusb_dsp.h ../src/xmosusb_bin2hex.h ../src/xmosusb_dac8.h
-	@echo compiling xmosusb
-	g++ -o xmosusb ../src/xmosusb.cpp -I../src $(LIBUSB) $(FLAGS)
-	@echo xmosusb compiled sucessfully
+xmosusb_arm:	../src/xmosusb.cpp ../src/xmosusb_samd.h ../src/xmosusb_dsp.h ../src/xmosusb_bin2hex.h ../src/xmosusb_dac8.h
+	@echo compiling $@
+	@g++ -o $@ ../src/xmosusb.cpp -I../src $(LIBUSBARM) $(FLAGS) $(OSXARM)
+	@echo $@ compiled sucessfully
 	
+xmosusb_x86:	../src/xmosusb.cpp ../src/xmosusb_samd.h ../src/xmosusb_dsp.h ../src/xmosusb_bin2hex.h ../src/xmosusb_dac8.h
+	@echo compiling $@
+	@g++ -o $@ ../src/xmosusb.cpp -I../src $(LIBUSBX86) $(FLAGS) $(OSXX86)
+	@echo $@ compiled sucessfully
+	
+	
+xmosusb:	xmosusb_arm xmosusb_x86
+	@lipo -create -output $@ xmosusb_x86 xmosusb_arm
+	@echo dual architecture $@ combined sucessfully
+
+
 testlibusb:	../src/testlibusb.c
-	@echo compiling testlibusb
-	gcc  -o testlibusb ../src/testlibusb.c $(LIBUSB) $(FLAGS)
+	@echo compiling testlibusb for arm
+	@gcc  -o $@ ../src/testlibusb.c $(LIBUSBARM) $(FLAGS)
 	@echo testlibusb compiled sucessfully
-	
-../dac8/dac8pro.bin.h:	../dac8/dac8pro.bin 
-	./xmosusb --bin2hex ../dac8/dac8pro.bin
-	@echo dac8pro.bin.h generated sucessfully
-	
-../dac8/dac8stereo.bin.h:	../dac8/dac8stereo.bin 
-	./xmosusb --bin2hex ../dac8/dac8stereo.bin
-	@echo dac8stereo.bin.h generated sucessfully
 
-dac8pro: ../dac8/dac8pro.bin.h xmosusb
-	g++ -o dac8pro    ../src/xmosusb.cpp -I../src $(LIBUSB) $(FLAGS) -DDAC8PRO 
-	@echo dac8pro compiled sucessfully
-	@cp dac8pro    ../dac8/utilities/osx
-
-dac8stereo:	../dac8/dac8stereo.bin.h xmosusb
-	g++ -o dac8stereo ../src/xmosusb.cpp -I../src $(LIBUSB) $(FLAGS) -DDAC8STEREO 
-	@echo dac8stereo compiled sucessfully
-	@cp dac8stereo ../dac8/utilities/osx
+testlibusbx86:	../src/testlibusb.c
+	@echo compiling testlibusb for x86_64
+	@gcc  -o $@ ../src/testlibusb.c $(LIBUSBX86) $(FLAGS) -arch x86_64 
+	@echo testlibusb for x86_64 compiled sucessfully
 
 
 

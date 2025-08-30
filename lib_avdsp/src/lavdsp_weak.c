@@ -26,13 +26,13 @@ void avdspTask8() __attribute__((weak));
 void avdspTask8() {  };
 
 int  avdspInit() __attribute__((weak));
-int  avdspInit() { return 0; };
+int  avdspInit() { return 1; };
 
 int  avdspSetProgram(unsigned prog) __attribute__((weak));
-int  avdspSetProgram(unsigned prog) { return 0; };
+int  avdspSetProgram(unsigned prog) { return 1; };
 
 int  avdspChangeFS(unsigned newFS) __attribute__((weak));
-int  avdspChangeFS(unsigned newFS) { return 0; };
+int  avdspChangeFS(unsigned newFS) { return 1; };
 
 int avdspSetVolume(unsigned num, const int vol) __attribute__((weak));
 int avdspSetVolume(unsigned num, const int vol) { return 0; }

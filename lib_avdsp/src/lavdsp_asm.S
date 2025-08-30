@@ -23,7 +23,6 @@
     .issue_mode  dual
 	.text
 	.globl	avdsp_biquads
-	.align	4
 	.type	avdsp_biquads,@function
 	.cc_top avdsp_biquads.function,avdsp_biquads
 
@@ -46,23 +45,21 @@ extern  avdsp_biquads(
 	#define c0 r8
 	#define c1 r9
 
+	.align	16
 avdsp_biquads:
-	{ zext sections,8 ; dualentsp NSTACKWORDS } // keep sections lsb only
-	{ sub sections, sections, 1 ; bt sections, .L_entry }
-	retsp NSTACKWORDS
-
-.L_entry:
+	{ ldc r11,24 ; dualentsp NSTACKWORDS }
     std r4, r5, sp[1]
     std r6, r7, sp[2]
     std r8, r9, sp[3]
-	//r0 contains xn as q4.28. Maccs will produce q8.56, then reduced to 4.60
-    bu .L_entry3
+	{ sub sections, sections, 1 ; bt sections, .L_entry }
+	{ ldc r0,0 ; ldc r1,0 }
+	retsp NSTACKWORDS
 
 .L_entry2:
-	ldaw coeffs, coeffs[6]		 // point on next biquad coeff and states
-	ldaw states, states[6]
+	{ add coeffs, coeffs, r11 ;	add states, states, r11 }	 // point on next biquad coeff and states
 
-.L_entry3:
+
+.L_entry:
 	ldd h,l,states[2]			// get "remainder" from last calculation (otherwise would be 0)
 	ldd c1, c0, coeffs[0] 		// c0=b0 and c1=b1
 	maccs h, l, s0, c0 			// x[n] * b0
@@ -75,18 +72,24 @@ avdsp_biquads:
 	maccs h, l, s1, c0			// y[n-1] * a1	this coef is reduced by 1.0 due to remainder integration
 	{ ldw c1, coeffs[4] ; ldc c0,(AVDSP_MANT) }			// c1=a2
 	maccs h, l, s2, c1			// y[n-2] * a2
-	std h,l,states[2]			// save accumulator for reminder re-integration at next cycle
 	lsats h, l, c0				// saturate
+	std h,l,states[2]			// save accumulator for reminder re-integration at next cycle
 	lextract s0, h, l, c0, 32	// remove BQ coefs precision and get back to sample precision (4.28)
-	{ shl l,l,(32-(AVDSP_MANT)) ; mov h,s0 }	//reduce hl from q8.56 to q4.60
 	std s1, s0, states[1]		// store into y[n-1] and y[n-2]
 
 	{ sub sections,sections,1 ; bt sections, .L_entry2 }	// leave if finished
-	{ mov r0,l ; mov r1,h }
-    ldd r4, r5, sp[1]
+
     ldd r6, r7, sp[2]
     ldd r8, r9, sp[3]
-	retsp NSTACKWORDS
+	{ mov r2,l ; mov r1,s0 }
+    ldd r4, r5, sp[1]
+#if (AVDSP_MANT != 16) && (AVDSP_MANT<24)
+//if the value is not compatible with the shl instruction, using a register
+    ldc r3,(32-(AVDSP_MANT))
+    { shl r0,r2,r3 ;  retsp NSTACKWORDS }
+#else
+	{ shl r0,r2,(32-(AVDSP_MANT)) ; retsp NSTACKWORDS }
+#endif
 
 	.cc_bottom avdsp_biquads.function
 	.set	avdsp_biquads.nstackwords,NSTACKWORDS

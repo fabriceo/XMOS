@@ -16,7 +16,7 @@
 #endif
 
 
-//base record containing avdsp program key information
+//base record containing avdsp key informations
 avdsp_base_t avdspBase;
 //this second symbol will be used when accessing data from audio task
 extern avdsp_base_t baseAudio;
@@ -25,14 +25,14 @@ extern avdsp_base_t baseLocal;
 //this fourth symbol will be used by each other dsp tasks
 extern avdsp_base_t baseTasks;
 
-unsigned u_avdspif;         //resource value of the channel used for the interface
+unsigned u_avdspif;         //resource address of the channel used for the interface
 
-
-static inline int timerafterTicks(const int delay) {
+//provide a fixed delay without scheduling the task (mips spread to others)
+static inline int timerafterTicks(const int ticks) {
     timer tmr;
     int time;
     tmr :> time;
-    tmr when timerafter(time+delay) :> time;
+    tmr when timerafter(time+ticks) :> time;
     return time;
 }
 
@@ -51,29 +51,30 @@ static void tcbInit() { unsafe {
 } }
 
 
+//in transfer mode 2, test the channel for a token presence and extract it,
+// otherwise return 0, meaning a 32 bits data is pending
+// in mode 0 or 1, just wait for and extract a "CT_END" token
 #pragma select handler
 static inline void testGetToken(chanend c, int &returnVal) {
-#if (AVDSP_TRANSFER_SAMPLES == 2) //use channel to transfer sample
-    if(testct(c)) {
-        returnVal = inct(c);
-        return; }
-#endif
+#if (AVDSP_TRANSFER_MODE == 2) //use channel to transfer sample
+    if(testct(c)) returnVal = inct(c);
+    else returnVal = 0;
+#else
     chkct(c, XS1_CT_END);
     returnVal = 0;
+#endif
 }
-
-/****** ALLL BAD in mode 2... ******/
 
 //used to transfer samples back and forth from the audio task, to fill our sample array
 #pragma unsafe arrays
 [[dual_issue]]void UserBufferManagement(unsigned sampsFromUsbToAudio[], unsigned sampsFromAudioToUsb[]){ unsafe {
     asm volatile("#UserBufferManagement:");
-    //this is a user overloaded function returning thre ressource channel to be used for communication
+#if (AVDSP_TRANSFER_MODE == 2) //use channel for everything.
+    //this is a user overloaded function returning the ressource channel to be used for communication
     unsigned caudio = avdspGetChanend();
-#if (AVDSP_TRANSFER_SAMPLES == 2) //use channel for everything.
-    //eventually transfer samples back and forth
+    //transfer samples back and forth
     int ctval;
-    select { //test if a token has been sent by the avdsp task, as a ready signal
+    select { //test if a token has been sent by the avdsp task, as a "ready" signal
         case testGetToken((chanend)caudio, ctval) : {
             //send samples from audio to dsp
             #pragma loop unroll
@@ -85,8 +86,8 @@ static inline void testGetToken(chanend c, int &returnVal) {
             for (int i=0; i < AVDSP_NUM_DACOUT; i++)  sampsFromUsbToAudio[ i ] = inuint((chanend)caudio);
             #pragma loop unroll
             for (int i=0; i < AVDSP_NUM_USBIN; i++)   sampsFromAudioToUsb[ i ] = inuint((chanend)caudio);
-            chkct((chanend)caudio,XS1_CT_END);  //get acknoledgment
-            outct((chanend)caudio, XS1_CT_END ); //close channel and trigger main task start
+            chkct((chanend)caudio,XS1_CT_END);  //get end of transmission by avdsp
+            outct((chanend)caudio, XS1_CT_END ); //send end of transmission by audio, this closes channel and triggers main task start
             break; }
         default : {
             //problem no token on time : timeout/overlap : call user function on its own tile.
@@ -99,23 +100,30 @@ static inline void testGetToken(chanend c, int &returnVal) {
     if (running.ll == 0) {
         //all tasks finished, verify if master is ready
         if (baseAudio.tcb.ready) {
-            int offset = AVDSP_SAMPLES_MAX - baseAudio.samplesOfs;
-#if (AVDSP_TRANSFER_SAMPLES == 1) //use memory transfer
+            int offset = AVDSP_MAX_SAMPLES - baseAudio.samplesOfs;
+#if (AVDSP_TRANSFER_MODE == 1) //use memory transfer
             //same tile as audio, eventually copy samples back and forth
             #pragma loop unroll
-            for (int i=0; i < AVDSP_NUM_ADCIN; i++)  baseAudio.samples[ offset + i ] = sampsFromAudioToUsb[ i ];
+            for (int i=0; i < AVDSP_NUM_ADCIN; i++)
+                baseAudio.samplePtr[ offset + i ] = sampsFromAudioToUsb[ i ];
             #pragma loop unroll
-            for (int i=0; i < AVDSP_NUM_USBOUT; i++)  baseAudio.samples[ offset + AVDSP_NUM_ADCIN + i ] = sampsFromUsbToAudio[ i ];
+            for (int i=0; i < AVDSP_NUM_USBOUT; i++)
+                baseAudio.samplePtr[ offset + (AVDSP_MAX( AVDSP_NUM_ADCIN , 1*AVDSP_MIN_SAMPLES ) ) + i ] = sampsFromUsbToAudio[ i ];
             #pragma loop unroll
-            for (int i=0; i < AVDSP_NUM_DACOUT; i++)  sampsFromUsbToAudio[ i ] = baseAudio.samples[ offset + AVDSP_NUM_ADCIN + AVDSP_NUM_USBOUT + i ];
+            for (int i=0; i < AVDSP_NUM_DACOUT; i++)
+                sampsFromUsbToAudio[ i ] = baseAudio.samplePtr[ offset + (AVDSP_MAX( AVDSP_NUM_ADCIN + AVDSP_NUM_USBOUT , 2*AVDSP_MIN_SAMPLES ) ) + i ];
             #pragma loop unroll
-            for (int i=0; i < AVDSP_NUM_USBIN; i++)   sampsFromAudioToUsb[ i ] = baseAudio.samples[ offset + AVDSP_NUM_ADCIN + AVDSP_NUM_USBOUT + AVDSP_NUM_DACOUT + i ];
+            for (int i=0; i < AVDSP_NUM_USBIN; i++)
+                sampsFromAudioToUsb[ i ] = baseAudio.samplePtr[ offset + (AVDSP_MAX( AVDSP_NUM_ADCIN + AVDSP_NUM_USBOUT + AVDSP_NUM_DACOUT , 3*AVDSP_MIN_SAMPLES ) ) + i ];
 #endif
-            baseAudio.samplesOfs = offset;
-            //check if we need more than 1 task
-            if (baseAudio.tcb.runable.hl.lo & 0xFFFFFF00)
+            baseAudio.samplesOfs = offset;  //formally switch A/B array
+            unsigned runable = baseAudio.tcb.runable.hl.lo;
+            //check if we need more than 1 task, to kick all the other slave tasks eventually
+            if (runable & 0xFFFFFF00)
                 asm volatile("msync res[%0]"::"r"(baseAudio.tcb.synchronizer));
-            outct((chanend)baseAudio.tcb.caudio, XS1_CT_END ); //trigger new task
+            //check if the main task can be launched
+            if (runable & 0xFF)
+                outct((chanend)baseAudio.tcb.caudio, XS1_CT_END ); //trigger new task
             baseAudio.tcb.running = baseAudio.tcb.runable;
         }
     } else {
@@ -130,9 +138,9 @@ static inline void testGetToken(chanend c, int &returnVal) {
 #pragma unsafe arrays
 static void transferSamplesFromAvsdp(chanend c){ unsafe {
     asm volatile("#transferSamplesFromAvsdp:");
-#if (AVDSP_TRANSFER_SAMPLES == 2) //use channel
+#if (AVDSP_TRANSFER_MODE == 2) //use channel
     //verify slave tasks readiness and
-    int offset = AVDSP_SAMPLES_MAX - baseLocal.samplesOfs;
+    int offset = AVDSP_MAX_SAMPLES - baseLocal.samplesOfs;
     #pragma loop unroll
     for (int i=0; i < AVDSP_NUM_ADCIN; i++) baseLocal.samples[ offset + i ] = inuint(c);
     #pragma loop unroll
@@ -187,6 +195,7 @@ static void flushAudioChannel(chanend c){ unsafe {
 
 #pragma unsafe arrays
 static int mainTask(server interface avdsp_if i, chanend caudio){
+    debug_printf("lavdsp : mainTask\n");
     asm volatile("#avdspmainTask:");
     baseLocal.tcb.runable.ll = 0;
     for (int i=1; i<=baseLocal.tasks; i++)
@@ -212,16 +221,9 @@ static int mainTask(server interface avdsp_if i, chanend caudio){
             break; }
 #endif
 
-        //return key informations related to running program
-        case i.getInfo(avdsp_info_t info) -> int res : { unsafe {
-            flushAudioChannel(caudio);
-            info.tasksLaunched = baseLocal.tasks;
-            for (int i=0; i<8; i++) info.time[i] = baseLocal.tcb.inf[i].time;
-            res = 1;
-            break; } }
-
         //to be launched at the very begining of the user application
         case i.init(unsigned min, unsigned max) -> int res : {
+            debug_printf("lavdsp : init\n");
             baseLocal.program = 0;
             baseLocal.started = 0;
             baseLocal.fs = 0;
@@ -231,18 +233,37 @@ static int mainTask(server interface avdsp_if i, chanend caudio){
             break; }
 
         case i.start() -> int res : {
+            debug_printf("lavdsp : start\n");
             flushAudioChannel(caudio);
             baseLocal.started = 1;
             res = 1;
             break; }
 
         case i.stop() -> int res : {
+            debug_printf("lavdsp : stop\n");
             flushAudioChannel(caudio);
             baseLocal.started = 0;
             res = 1;
             break; }
 
+        case i.changeFS(int newFS) -> int res : {
+            flushAudioChannel(caudio);
+            if ( (newFS >= baseLocal.fsMin) && (newFS <= baseLocal.fsMax)) {
+                res = 1;
+                baseLocal.fs = newFS;
+                int val;
+#if defined( AVDSP_RUNTIME ) && ( AVDSP_RUNTIME > 0 )
+                val = avdsp_rt_changeFS(newFS);
+#else
+                val = avdspChangeFS(newFS);
+#endif
+                if ( val && (val != baseLocal.tasks)) return val;   //change number of tasks
+            } else
+                res = 0;
+            break; }
+
         case i.changeProgram(unsigned newProg) -> int res : {
+            debug_printf("lavdsp : changeProgram(%d)\n",newProg);
             flushAudioChannel(caudio);
             res = 1;
 #if defined( AVDSP_RUNTIME ) && ( AVDSP_RUNTIME > 0 )
@@ -250,36 +271,41 @@ static int mainTask(server interface avdsp_if i, chanend caudio){
 #else
             int val = avdspSetProgram(newProg);
             baseLocal.program = newProg;
-            if ( val && (val != baseLocal.tasks)) return val;
+            if ( val && (val != baseLocal.tasks)) return val;   //change number of tasks
 #endif
             break; }
 
-        case i.changeFS(int newFS) -> int res : {
+        //return key informations related to running program
+        case i.getInfo(avdsp_info_t info) -> int res : { unsafe {
+            debug_printf("lavdsp : getInfo\n");
             flushAudioChannel(caudio);
-            if ( (newFS >= baseLocal.fsMin) && (newFS <= baseLocal.fsMax)) {
-#if defined( AVDSP_RUNTIME ) && ( AVDSP_RUNTIME > 0 )
-                res = avdsp_rt_changeFS(newFS);
-#else
-                res = avdspChangeFS(newFS);
-#endif
-                baseLocal.fs = newFS;
-            } else
-                res = 0;
-            break; }
+            info.tasksLaunched = baseLocal.tasks;
+            for (int i=0; i<8; i++) info.time[i] = baseLocal.tcb.inf[i].time;
+            res = 1;
+            break; } }
 
         case i.setVolume(unsigned num, const float vol) -> int res : {
-            avdspSetVolume(num, q31( vol) );
+            //avdspSetVolume(num, q31( vol) );
             res = 1;
             break; }
 
         case i.setVolumeDB(unsigned num, const float volDB) -> int res : {
-            avdspSetVolume(num, q31db(volDB));
             res = 1;
+            //avdspSetVolume(num, q31db(volDB));
             break; }
 
         case i.setBiquadCoefs(unsigned num, const float F, const float Q, const float G) -> int res : {
             res = avdspSetBiquadCoefs(num, F, Q, G);
             break; }
+
+        case i.writeMemory(unsigned address, unsigned array[nwords], unsigned nwords ) -> int res : {
+
+            break; }
+
+        case i.readMemory(unsigned address, unsigned array[nwords], unsigned nwords ) -> int res : {
+
+            break; }
+
         }
     }
     return 1;   //never happens
@@ -299,7 +325,7 @@ void lavdspMain(server interface avdsp_if avdspif, chanend caudio, const int tas
         baseLocal.tcb.caudio = (unsigned)caudio;
         asm volatile("stw %0,dp[u_avdspif]" :: "r"(avdspif)); }
     baseLocal.tasksMax = tasksMax;
-    //can be overloaded by user program. fefault code returns 1
+    //can be overloaded by user program. default code returns 1
     baseLocal.tasks = avdspInit();
     while(1) {
         if (baseLocal.tasks > tasksMax) {
