@@ -1,8 +1,8 @@
 #windows version
-#use mingw32-make or gmake
+#use mingw32-make
 #
 #build all
-all:	xmosusb.exe testlibusb.exe Makefile
+all:	xmosusb.exe testlibusb.exe xusb.exe listdevs.exe Makefile
 	@echo xmosusb and testlibusb
 
 #build xmosusb and testlibusb only	
@@ -22,8 +22,18 @@ xmostusb.exe:	../src/xmosusb.cpp ../src/xmosusb_samd.h ../src/xmosusb_dsp.h ../s
 	g++ -o xmostusb ../src/xmosusb.cpp -I../src -I../../../TUSBAUDIO -DTUSBAUDIOAPI -DTB_DEBUG=0
 	@echo xmostusb.exe compiled sucessfully
 
-testlibusb.exe:	../src/testlibusb.c
-	@echo compiling testlibusb.exe
-	gcc -o testlibusb ../src/testlibusb.c -I../src $(LIBUSB)
-	@echo testlibusb.exe compiled sucessfully
+testlibusb.exe:	testlibusb.c
+	@echo compiling $@
+	gcc -o $@ testlibusb.c $(LIBUSB)
+	@echo $@ compiled sucessfully
+	
+xusb.exe:	xusb.c
+	@echo compiling $@
+	gcc -o $@ xusb.c $(LIBUSB)
+	@echo $@ compiled sucessfully
+	
+listdevs.exe:	listdevs.c
+	@echo compiling $@
+	gcc -o $@ listdevs.c $(LIBUSB)
+	@echo $@ compiled sucessfully
 	
