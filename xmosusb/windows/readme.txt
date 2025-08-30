@@ -11,11 +11,11 @@ select these options in the wizard:
 	Threads 		win32
 
 once installed, enter in a terminal session from the Windows Start menu "MinGW-W64 projet / Run terminal"
-a command prompt session will apear with proper "path" envirronement initialized.
+a command prompt session will appear with proper "path" envirronement initialized.
 type "cd xx" to move in this folder.
 type "mingw32-make" or "gmake" to launch the compiler.
 the xmosusb.exe file will be created in this same folder
-type "gmake dac8" to create all dac8 upgrade utilities
+
 
 
 
