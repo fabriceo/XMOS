@@ -1,6 +1,6 @@
 # requires sudo apt-get install libusb-1.0-0-dev
 
-all:	xmosusb testlibusb Makefile dac8
+all:	xmosusb testlibusb Makefile
 	@echo xmosusb and testlibusb
 
 LIBUSB = `pkg-config --libs --cflags libusb-1.0`
